@@ -38,12 +38,11 @@ typedef struct{
 
 
 /*
- * @running_task
+ * @current_running_task
  *
  * Pointer that holds address of currently executing/running task.
  * Pointer should always point to a valid task control block
  * */
-// extern tcb *running_task;
 extern tcb *current_running_task;
 
 /*
@@ -90,12 +89,12 @@ extern uint8_t runnable_queue_prios;
 
 
 /*
- * @brief:				Creates a new task using static allocation
+ * @brief:		Creates a new task using static allocation
  *
- * 						Function initializes context and stack for the new task and adds it to
- * 						corresponding ready queue with same priority.
- * 						All parameters to this function should be provided by the user and should
- * 						be statically allocated
+ * Function initializes context and stack for the new task and adds it to
+ * corresponding ready queue with same priority.
+ * All parameters to this function should be provided by the user and should
+ * be statically allocated
  *
  * @param tcb:			address of user allocated task's task control block (tcb)
  * @param stack:		a pointer to user allocated stack
@@ -114,9 +113,9 @@ void task_create(		void (*task_function)(void),
 /*
  * @brief:		Performs context switch
  *
- * 				Function performs context switch using two stack pointers.
- * 				Upon returning from this function stack pointer register will be
- * 				using restored stack pointer of restored task
+ * Function performs context switch using two stack pointers.
+ * Upon returning from this function stack pointer register will be
+ * using restored stack pointer of restored task
  *
  * @param sp1:	Stack pointer of a task whose context will be stored
  * @param sp2:	Stack pointer of a task whose context will be loaded
