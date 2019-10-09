@@ -2,3 +2,9 @@ lpc_board_nxp_lpcxpresso_1549/
 lpc_chip_15xx/
 .mcuxpressoide_packages_support/
 .metadata/
+.cproject
+.project
+.settings/
+crp.c
+cr_startup_lpc15xx.c
+sysinit.c
