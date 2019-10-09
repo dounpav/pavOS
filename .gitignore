@@ -5,6 +5,7 @@ lpc_chip_15xx/
 .cproject
 .project
 .settings/
+main.c
 crp.c
 cr_startup_lpc15xx.c
 sysinit.c
