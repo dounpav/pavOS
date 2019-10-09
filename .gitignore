@@ -8,3 +8,4 @@ lpc_chip_15xx/
 crp.c
 cr_startup_lpc15xx.c
 sysinit.c
+Debug/
