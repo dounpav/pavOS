@@ -10,3 +10,5 @@ crp.c
 cr_startup_lpc15xx.c
 sysinit.c
 Debug/
+pavOS-kernel LinkServer Debug.launch
+FreeRTOS_TAD_logs/
