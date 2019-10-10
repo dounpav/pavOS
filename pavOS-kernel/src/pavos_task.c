@@ -16,16 +16,51 @@
  * */
 static tcb *current_running_task = NULL;
 
+/*
+ * @ready_queues
+ *
+ * Ready queues. Ready queues are used to hold tasks that are ready to run.
+ * Scheduler picks next task to run only from these queues.
+ * Each queue is defined with its own unique priority, thus there cannot be two
+ * ready queues with same priority.
+ * Each queue should only contain tasks with same priority.
+ * Number of queues is determined always at compile time by TASK_PRIORITY_CNT macro
+ *
+ * Ready queue with priority 0 is used for idle task, but nothing
+ * restricts user to add any other task to that priority.
+ * */
+static task_queue ready_queues[TASK_PRIORITY_CNT];
 
-static uint8_t readyq_prio_bmap = 0;
+
+/*
+ * @runnable_queue_prio_bmap
+ *
+ * Bitmap variable that tells which of the ready queues are ready to run
+ * Each bit corresponds to a one queue priority that is ready to run
+ * When nth bit is set, then queue with nth priority is ready to run
+ * Queue is ready to run when it contains tasks that are in ready state
+ *
+ * Bitmap will be equal to 2^PRIORITY_CNT-1 when all queues are ready to run
+ * Bitmap will be equal to zero if no queues are ready to run
+ *
+ * @note:
+ * Bitmap will be always greater than zero, because idle task will be always scheduled to run
+ * as default.
+ * */
+static uint8_t runnable_queue_prio_bmap = 0;
+
+
+/*helper functions*/
+#define ready_queue_push(prio, tcb)				task_queue_push( &(ready_queues[prio]), tcb)
+#define ready_queue_pop(prio)					task_queue_pop( &(ready_queues[prio]) )
+#define set_runnable_prio(prio)					runnable_queue_prio_bmap = runnable_queue_prio_bmap | (1 << prio)
+#define unset_runnable_prio(prio)				runnable_queue_prio_bmap = runnable_queue_prio_bmap ^ (1 << prio)
+#define get_highest_runnable_prio				find_msb(runnable_queue_prio_bmap)
 
 
 static tcb idle_tcb;								// task control block for the idle task
 static uint32_t idle_stack[STACK_SIZE_MIN];			// stack for idle task
 static uint32_t *sp_kernel;
-
-task_queue ready_queues[TASK_PRIORITY_CNT];
-uint8_t runnable_queue_prios = 0;
 
 
 void task_create(void (*task_function)(void),
@@ -132,7 +167,7 @@ tcb *task_unblock_one(task_queue *wait){
 void task_yield(void){
 
 	// if current task is the only one running dont yield
-	if(runnable_queue_prios == 0) return;
+	if(runnable_queue_prio_bmap == 0) return;
 
 	/*
 	 * if current task has higher priority than highest runnable priority

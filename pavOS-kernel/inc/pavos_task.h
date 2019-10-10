@@ -37,47 +37,9 @@ typedef struct{
 }task_queue;
 
 
-/*
- * @ready_queues
- *
- * Ready queues. Ready queues are used to hold tasks that are ready to run.
- * Scheduler picks next task to run only from these queues.
- * Each queue is defined with its own unique priority, thus there cannot be two
- * ready queues with same priority.
- * Each queue should only contain tasks with same priority.
- * Number of queues is determined always at compile time by TASK_PRIORITY_CNT macro
- *
- * Ready queue with priority 0 is used for idle task, but nothing
- * restricts user to add any other task to that priority.
- * */
-extern task_queue ready_queues[TASK_PRIORITY_CNT];
-
-
-/*
- * @runnable_queue_prios
- *
- * Bitmap variable that tells which of the ready queues are ready to run
- * Each bit corresponds to a one queue priority that is ready to run
- * When nth bit is set, then queue with nth priority is ready to run
- * Queue is ready to run when it contains tasks that are in ready state
- *
- * Bitmap will be equal to 2^PRIORITY_CNT-1 when all queues are ready to run
- * Bitmap will be equal to zero if no queues are ready to run
- *
- * @note:
- * Bitmap will be always greater than zero, because idle task will be always scheduled to run
- * as default.
- * */
-extern uint8_t runnable_queue_prios;
 
 
 
-/*helper functions*/
-#define ready_queue_push(prio, tcb)				task_queue_push( &(ready_queues[prio]), tcb)
-#define ready_queue_pop(prio)					task_queue_pop( &(ready_queues[prio]) )
-#define set_runnable_prio(prio)					runnable_queue_prios = runnable_queue_prios | (1 << prio)
-#define unset_runnable_prio(prio)				runnable_queue_prios = runnable_queue_prios ^ (1 << prio)
-#define get_highest_runnable_prio				find_msb(runnable_queue_prios)
 
 
 /*
