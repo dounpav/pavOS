@@ -7,11 +7,20 @@
 
 #include"pavos_task.h"
 
-tcb *current_running_task = NULL;
+
+/*
+ * @current_running_task
+ *
+ * Pointer that holds address of currently executing/running task.
+ * Pointer should always point to a valid task control block
+ * */
+static tcb *current_running_task = NULL;
+
+
 static uint8_t readyq_prio_bmap = 0;
 
 
-static tcb idle_tcb;							// task control block for the idle task
+static tcb idle_tcb;								// task control block for the idle task
 static uint32_t idle_stack[STACK_SIZE_MIN];			// stack for idle task
 static uint32_t *sp_kernel;
 
@@ -41,14 +50,14 @@ void task_create(void (*task_function)(void),
 	set_runnable_prio(priority);
 }
 
-__attribute__((naked))void task_context_switch(uint32_t **sp1, uint32_t **sp2){
+__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld){
 
 	__asm__ __volatile__(
 
-			"	push {lr, r4-r11}			\n"			// save context
-			"	str sp, [r0]				\n"
+			"	push {r4-r11, lr}			\n"			// save context
+			"	str sp, [r0]				\n"         // store old stack pointer
 			"	ldr	sp, [r1]				\n"			// context switch
-			"	pop {lr, r4-r11}			\n"			// restore context
+			"	pop {r4-r11, lr}			\n"			// restore context
 			"	bx lr						\n"
 	);
 }
@@ -105,6 +114,8 @@ void task_block_self(task_queue *wait){
 	current_task->state = TASK_BLOCKED;
 
 	task_queue_push(wait, current_task);
+
+	task_yield();
 }
 
 tcb *task_unblock_one(task_queue *wait){
@@ -145,44 +156,6 @@ void task_yield(void){
 	task_context_switch( &(old_task->sp), &(new_task->sp) );
 }
 
-
-void task_yield_old(void){
-
-	// if current task is the only task return immediately
-	if(runnable_queue_prios == 0) return;
-
-	// get highest runnable priority from ready queues
-	int highest_prio = get_highest_runnable_prio;
-
-	/* if highest runnable queue priority is lower that running tasks priority
-	 * and it is not blocked dont perform context switch*/
-	if(current_running_task->state != TASK_BLOCKED){
-
-		if(current_running_task->prio <= highest_prio){
-			// push task to its ready queue according to its priority
-			current_running_task->state = TASK_READY;
-			ready_queue_push(current_running_task->prio, current_running_task);
-		}
-		else{
-			// dont perform context switch: return immediately
-			return;
-		}
-	}
-
-	// choose next task to run
-	tcb *old_task = current_running_task;
-	// pop a task from ready queue with highest runnable priority
-	current_running_task = ready_queue_pop(highest_prio);
-	current_running_task->state = TASK_RUNNING;
-
-	// if queue became empty unset the runnable priority
-	if(ready_queues[highest_prio].size == 0){
-		unset_runnable_prio(highest_prio);
-	}
-
-	// perform context switch
-	task_context_switch( &(old_task->sp), &(current_running_task->sp) );
-}
 
 void idle_task(void){
 

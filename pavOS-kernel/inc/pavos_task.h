@@ -38,14 +38,6 @@ typedef struct{
 
 
 /*
- * @current_running_task
- *
- * Pointer that holds address of currently executing/running task.
- * Pointer should always point to a valid task control block
- * */
-extern tcb *current_running_task;
-
-/*
  * @ready_queues
  *
  * Ready queues. Ready queues are used to hold tasks that are ready to run.
@@ -89,17 +81,17 @@ extern uint8_t runnable_queue_prios;
 
 
 /*
- * @brief:		Creates a new task using static allocation
+ * @brief:  Creates a new task using static allocation
  *
  * Function initializes context and stack for the new task and adds it to
  * corresponding ready queue with same priority.
  * All parameters to this function should be provided by the user and should
  * be statically allocated
  *
- * @param tcb:			address of user allocated task's task control block (tcb)
- * @param stack:		a pointer to user allocated stack
- * @param stack_size: 	a size of the user allocated stack
- * @param prior: 		priority of the task
+ * @param tcb:          address of user allocated task's task control block (tcb)
+ * @param stack:        a pointer to user allocated stack
+ * @param stack_size:   a size of the user allocated stack
+ * @param prior:        priority of the task
  *
  * @return:				nothing
  * */
@@ -111,22 +103,22 @@ void task_create(		void (*task_function)(void),
 
 
 /*
- * @brief:		Performs context switch
+ * @brief:  Performs context switch
  *
  * Function performs context switch using two stack pointers.
  * Upon returning from this function stack pointer register will be
  * using restored stack pointer of restored task
  *
- * @param sp1:	Stack pointer of a task whose context will be stored
- * @param sp2:	Stack pointer of a task whose context will be loaded
- * @return: 	nothing
+ * @param sp_st:	Stack pointer of a task whose context will be stored
+ * @param sp_ld:	Stack pointer of a task whose context will be loaded
+ * @return: 	    nothing
  * */
-__attribute__((naked))void task_context_switch(uint32_t **sp1, uint32_t **sp2);
+__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld);
 
 
 /*
  * @brief: 	pushes task to a the back of task queue
- * @task_q: task queue to which to push
+ * @queue: task queue to which to push
  * @tcb: 	task to push
  * @return: nothing
  * */
@@ -134,7 +126,7 @@ void task_queue_push(task_queue *queue, tcb *tcb);
 
 /*
  * @brief: pops a task from the front of the task queue
- * @task_q: task queue from which to pop
+ * @queue: task queue from which to pop
  * @return: popped task from queue
  * */
 tcb* task_queue_pop(task_queue *queue);
@@ -148,23 +140,23 @@ tcb *get_top_prio_task(void);
 
 
 /*
- * @brief:			Block currently running task
+ * @brief:  Block currently running task
  *
- * 					Task blocks itself and pushes itself to specified wait queue
+ * Task blocks itself and pushes itself to specified wait queue
  *
- * @param queue:	queue to which task will be added
- * @return:			nothing
+ * @param queue: queue to which task will be added
+ * @return:	     nothing
  * */
 void task_block_self(task_queue *queue);
 
 
 /*
- * @brief:			unblocks a task
+ * @brief:  unblocks a task
  *
- * 					Function pops task from wait queue and pushes it to corresponding
- * 					ready queue with same priority
+ * Function pops task from wait queue and pushes it to corresponding
+ * ready queue with same priority
  *
- * @param queue:	queue from which task will be popped
+ * @param queue:    queue from which task will be popped
  * @return:			a task that has been unblocked
  * */
 tcb *task_unblock_one(task_queue *queue);
