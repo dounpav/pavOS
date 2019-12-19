@@ -24,8 +24,8 @@ typedef struct tcb{
 	uint32_t        *sp;				// stack pointer
     uint32_t       *end;                // stack limit/end of the stack
 	task_state    state;				// task state
-	uint8_t		   prio;				// tasks priority
-	struct tcb    *next;				// points to next task
+	uint8_t		   prio;				// scheduling priority
+	struct tcb    *next;				// pointer to the next task
 }tcb;
 
 
@@ -115,7 +115,7 @@ tcb *get_top_prio_task(void);
  * @param queue: queue to which task will be added
  * @return:	     nothing
  * */
-void task_block_self(task_queue *queue);
+void task_block(task_queue *queue);
 
 
 /*
@@ -127,7 +127,7 @@ void task_block_self(task_queue *queue);
  * @param queue:    queue from which task will be popped
  * @return:			a task that has been unblocked
  * */
-tcb *task_unblock_one(task_queue *queue);
+tcb *task_unblock(task_queue *queue);
 
 
 /*

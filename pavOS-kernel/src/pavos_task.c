@@ -23,7 +23,7 @@ static tcb *current_running_task = NULL;
  * Scheduler picks next task to run only from these queues.
  * Each queue is defined with its own unique priority, thus there cannot be two
  * ready queues with same priority.
- * Each queue should only contain tasks with same priority.
+ * Each queue should only contain tasks with same scheduling priority.
  * Number of queues is determined always at compile time by TASK_PRIORITY_CNT macro
  *
  * Ready queue with priority 0 is used for idle task, but nothing
@@ -33,7 +33,7 @@ static task_queue ready_queues[TASK_PRIORITY_CNT];
 
 
 /*
- * @runnable_queue_prio_bmap
+ * @ready_queue_prio_bmap
  *
  * Bitmap variable that tells which of the ready queues are ready to run
  * Each bit corresponds to a one queue priority that is ready to run
@@ -47,15 +47,15 @@ static task_queue ready_queues[TASK_PRIORITY_CNT];
  * Bitmap will be always greater than zero, because idle task will be always scheduled to run
  * as default.
  * */
-static uint8_t runnable_queue_prio_bmap = 0;
+static uint8_t ready_queue_prio_bmap = 0;
 
 
 /*helper functions*/
 #define ready_queue_push(prio, tcb)				task_queue_push( &(ready_queues[prio]), tcb)
 #define ready_queue_pop(prio)					task_queue_pop( &(ready_queues[prio]) )
-#define set_runnable_prio(prio)					runnable_queue_prio_bmap = runnable_queue_prio_bmap | (1 << prio)
-#define unset_runnable_prio(prio)				runnable_queue_prio_bmap = runnable_queue_prio_bmap ^ (1 << prio)
-#define get_highest_runnable_prio				find_msb(runnable_queue_prio_bmap)
+#define set_ready_prio(prio)					ready_queue_prio_bmap = ready_queue_prio_bmap | (1 << prio)
+#define unset_ready_prio(prio)					ready_queue_prio_bmap = ready_queue_prio_bmap ^ (1 << prio)
+#define get_highest_runnable_prio				find_msb(ready_queue_prio_bmap)
 
 
 static tcb idle_tcb;								// task control block for the idle task
@@ -89,7 +89,15 @@ void task_create(void (*task_function)(void),
 
 	tcb->sp = &stack[ stack_size - (uint32_t)1 ];		// stack start address
 	*(tcb->sp) = (uint32_t) task_function;				// LR
-	(tcb->sp) -= 8;										// R11, R10, R8, R7, R6, R5, R4
+	(tcb->sp) -= 8;										// R11, R10, R9, R8, R7, R6, R5, R4
+
+	/*check that given priority is valid*/
+	if(priority > TASK_PRIORITY_MAX){
+		priority = TASK_PRIORITY_MAX;
+	}
+	if(priority < TASK_PRIORITY_IDLE){
+		priority = TASK_PRIORITY_IDLE;
+	}
 
 	tcb->prio = priority;
 	tcb->state = TASK_READY;
@@ -98,7 +106,7 @@ void task_create(void (*task_function)(void),
 	ready_queue_push(priority, tcb);
 
 	// set ready queue with priority as runnable
-	set_runnable_prio(priority);
+	set_ready_prio(priority);
 }
 
 __attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld){
@@ -152,14 +160,14 @@ tcb *get_top_prio_task(void){
 	tcb *top_task = ready_queue_pop(prio);
 
 	if(ready_queues[prio].size == 0){
-		unset_runnable_prio(prio);
+		unset_ready_prio(prio);
 	}
 
 	return top_task;
 }
 
 
-void task_block_self(task_queue *wait){
+void task_block(task_queue *wait){
 
 	tcb *current_task = current_running_task;
 	current_task->state = TASK_BLOCKED;
@@ -169,13 +177,13 @@ void task_block_self(task_queue *wait){
 	task_yield();
 }
 
-tcb *task_unblock_one(task_queue *wait){
+tcb *task_unblock(task_queue *wait){
 
 	tcb *task = task_queue_pop(wait);
 	task->state = TASK_READY;
 
 	ready_queue_push(task->prio, task);
-	set_runnable_prio(task->prio);
+	set_ready_prio(task->prio);
 
 	return task;
 }
@@ -183,7 +191,7 @@ tcb *task_unblock_one(task_queue *wait){
 void task_yield(void){
 
 	// if current task is the only one running dont yield
-	if(runnable_queue_prio_bmap == 0) return;
+	if(ready_queue_prio_bmap == 0) return;
 
 	/*
 	 * if current task has higher priority than highest runnable priority

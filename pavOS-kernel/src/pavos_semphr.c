@@ -25,7 +25,7 @@ void semaphore_take(semaphore *sem){
 	sem->count--;
 	if(sem->count < 0){
 
-        task_block_self( &(sem->wait) );
+        task_block( &(sem->wait) );
 	}
 }
 
@@ -38,7 +38,7 @@ void semaphore_give(semaphore *sem){
 	if(sem->count <= 0){
 
         // semaphore wakes task from waiting queue
-        task_unblock_one( &(sem->wait) );
+        task_unblock( &(sem->wait) );
 	}
 }
 

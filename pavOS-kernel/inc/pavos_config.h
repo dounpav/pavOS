@@ -8,7 +8,7 @@
 #ifndef PAVOS_CONFIG_H_
 #define PAVOS_CONFIG_H_
 
-#define STACK_SIZE_MIN					200
+#define STACK_SIZE_MIN					100
 
 #define TASK_PRIORITY_CNT				8
 #define TASK_PRIORITY_MAX				TASK_PRIORITY_CNT -1
