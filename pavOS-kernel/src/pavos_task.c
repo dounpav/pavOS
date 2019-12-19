@@ -63,6 +63,22 @@ static uint32_t idle_stack[STACK_SIZE_MIN];			// stack for idle task
 static uint32_t *sp_kernel;
 
 
+
+/*void task_stack_init(void *(entry)(void), tcb *tcb, uint32_t *stack, uint32_t stack_size){
+
+    uint32_t *temp = &stack[ stack_size - (uint32_t)1];
+    temp = (uint32_t) entry;
+    temp -= 8;
+    tcb->sp = temp;
+
+    tcb->end = &stack[4];
+    stack[0] = 0xfeedbeef;
+    stack[1] = 0xfeedbeef;
+    stack[2] = 0xfeedbeef;
+    stack[3] = 0xfeedbeef;
+}
+*/
+
 void task_create(void (*task_function)(void),
 				tcb *tcb,
 				uint32_t *stack,

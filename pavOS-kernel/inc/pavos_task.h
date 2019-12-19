@@ -21,10 +21,11 @@ typedef enum{
 /*Task control block structure for task*/
 typedef struct tcb{
 
-	uint32_t 	  *sp;				// stack pointer
-	task_state  state;				// task state
-	uint8_t		 prio;				// tasks priority
-	struct tcb  *next;				// points to next task
+	uint32_t        *sp;				// stack pointer
+    uint32_t       *end;                // stack limit/end of the stack
+	task_state    state;				// task state
+	uint8_t		   prio;				// tasks priority
+	struct tcb    *next;				// points to next task
 }tcb;
 
 
@@ -37,9 +38,14 @@ typedef struct{
 }task_queue;
 
 
-
-
-
+/*
+ * @brief:            initializes stack for task
+ * @param entry:      task entry address
+ * @param stack:      task's stack
+ * @param stack_size: size of the stack
+ * @return            nothing
+ * */
+// void task_stack_init(void *(entry)(void), uint32_t *stack, uint32_t stack_size);
 
 
 /*
@@ -91,7 +97,7 @@ void task_queue_push(task_queue *queue, tcb *tcb);
  * @queue: task queue from which to pop
  * @return: popped task from queue
  * */
-tcb* task_queue_pop(task_queue *queue);
+tcb *task_queue_pop(task_queue *queue);
 
 
 /*
