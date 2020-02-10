@@ -10,14 +10,14 @@
 
 void semaphore_count_create(semaphore *sem, uint32_t init, uint32_t limit){
 
+	LIST_INIT(sem->wait);
 	sem->count = init;
 	sem->limit = limit;
 }
 
 void semaphore_bin_create(semaphore *sem, uint32_t init){
 
-	sem->count = init;
-	sem->limit = 1;
+	return semaphore_count_create(sem, init, 1);
 }
 
 void semaphore_take(semaphore *sem){
@@ -25,7 +25,7 @@ void semaphore_take(semaphore *sem){
 	sem->count--;
 	if(sem->count < 0){
 
-        task_block_self( &(sem->wait) );
+        task_block( &(sem->wait) );
 	}
 }
 
@@ -38,7 +38,7 @@ void semaphore_give(semaphore *sem){
 	if(sem->count <= 0){
 
         // semaphore wakes task from waiting queue
-        task_unblock_one( &(sem->wait) );
+        task_unblock( &(sem->wait) );
 	}
 }
 
