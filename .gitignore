@@ -12,3 +12,4 @@ sysinit.c
 Debug/
 pavOS-kernel LinkServer Debug.launch
 FreeRTOS_TAD_logs/
+notes.txt
