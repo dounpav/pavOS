@@ -8,8 +8,7 @@
 #ifndef PAVOS_SEMPHR_H_
 #define PAVOS_SEMPHR_H_
 
-#include"pavos_task.h"
-
+#include "pavos_list.h"
 
 typedef struct{
 

@@ -8,12 +8,16 @@
 #ifndef PAVOS_TYPES_H_
 #define PAVOS_TYPES_H_
 
+#include"cmsis.h"
+#include"core_cm3.h"
+#include"core_cmFunc.h"
 #include<stddef.h>
 #include<stdbool.h>
 #include<stdint.h>
 #include<assert.h>
 
-
+#define INTERRUPTS_DISABLE     __disable_irq()
+#define INTERRUPTS_ENABLE	 	__enable_irq()
 
 /*
  * @brief: finds most significant bit from 32-bit value

@@ -8,10 +8,9 @@
 #ifndef PAVOS_TASK_H_
 #define PAVOS_TASK_H_
 
-#include"pavos_config.h"
-#include"pavos_assert.h"
-#include"pavos_types.h"
-#include"list.h"
+#include "pavos_list.h"
+#include "pavos_config.h"
+#include "pavos_types.h"
 
 typedef enum{
 
@@ -23,9 +22,10 @@ typedef enum{
 /*Task control block structure for task*/
 struct tcb{
 
-	uint32_t        *stack_ptr;
-	task_state    		 state;
-    struct list_item      self;
+	uint32_t        	 *stack_ptr;
+	task_state    		      state;
+	uint32_t			sleep_ticks;
+    struct list_item           self;
 };
 
 //typedef struct tcb task_t;
@@ -86,6 +86,12 @@ void task_block(struct list *queue);
  * - return:			a task that has been unblocked
  * */
 struct tcb *task_unblock(struct list *queue);
+
+
+/*
+ * Suspends task for ms amount of milliseconds
+ * */
+void task_sleep(uint32_t ms);
 
 
 /*

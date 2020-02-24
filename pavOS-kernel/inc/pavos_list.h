@@ -12,7 +12,7 @@
 #define LIST_ITEM_INIT(item, type){	\
 	item.next = NULL;				\
 	item.prev = NULL;				\
-	item.data = (void*)&type;		\
+	item.data = (void*)type;		\
 };
 
 #define LIST_INIT(list){		 	\
@@ -27,14 +27,18 @@
 	.tail = NULL,					\
 };
 
+#define LIST_ITEM_HOLDER(type, item) (type)item->holder;
+
+#define LIST_IS_EMPTY(list) (list.size == 0)
+
 /*
  * List item that holds pointer to an actual data
  * */
 struct list_item{
     
-    void             *data;
-    struct list_item *next;
-    struct list_item *prev;
+    void              *holder;
+    struct list_item 	*next;
+    struct list_item 	*prev;
 };
 
 /*
