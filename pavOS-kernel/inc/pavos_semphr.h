@@ -10,13 +10,13 @@
 
 #include "pavos_list.h"
 
-typedef struct{
+typedef struct semaphore{
 
-	int32_t     count;	// semaphore count value
-	int32_t     limit;	// semaphore limit value
-	struct list  wait;	// semaphore wait queue
-}semaphore;
-
+	int32_t          count;	 // semaphore count value
+	int32_t          limit;	 // semaphore limit value
+	struct list       wait;	 // semaphore wait queue
+	struct tcb  *owner;  // current owner of the mutex lock
+}semaphore_t;
 
 /*
  * Initializes counting semaphore
@@ -25,7 +25,7 @@ typedef struct{
  * - limit:  limit for semaphore count value
  * - return: nothing
  * */
-void semaphore_count_create(semaphore *sem, uint32_t init, uint32_t limit);
+void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit);
 
 
 /*
@@ -34,14 +34,23 @@ void semaphore_count_create(semaphore *sem, uint32_t init, uint32_t limit);
  * - init:   inital value
  * - return: nothing
  * */
-void semaphore_bin_create(semaphore *sem, uint32_t init);
+void semaphore_bin_create(semaphore_t *sem, uint32_t init);
+
+
+/*
+ * Initalizes mutex
+ * - mtx:	 pointer to a mutex structure
+ * - return: nothing
+ *
+ * */
+void mutex_create(semaphore_t *sem);
 
 
 /* Take counting semaphore
  * - sem:    pointer to a semaphore
  * - return  nothing
  * */
-void semaphore_take(semaphore *sem);
+void semaphore_take(semaphore_t *sem);
 
 
 /*
@@ -49,7 +58,23 @@ void semaphore_take(semaphore *sem);
  * - sem:    pointer to a semaphore
  * - return: nothing
  * */
-void semaphore_give(semaphore *sem);
+void semaphore_give(semaphore_t *sem);
+
+/*
+ * Takes the mutex lock. If lock is not available the task
+ * trying to take the lock is suspended until the lock is available
+ * - mtx:   pointer to a mutex semaphore
+ * - return nothing 
+ * */
+void mutex_lock(semaphore_t *mtx);
+
+
+/*
+ * Releases the mutex lock.
+ * - mtx: pointer to a mutex
+ * - returns nothing
+ * */
+void mutex_release(semaphore_t *mtx);
 
 
 

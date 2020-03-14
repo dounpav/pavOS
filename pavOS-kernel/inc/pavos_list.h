@@ -12,7 +12,7 @@
 #define LIST_ITEM_INIT(item, type){	\
 	item.next = NULL;				\
 	item.prev = NULL;				\
-	item.data = (void*)type;		\
+	item.holder = (void*)type;		\
 };
 
 #define LIST_INIT(list){		 	\

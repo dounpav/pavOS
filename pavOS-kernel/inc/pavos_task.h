@@ -12,6 +12,8 @@
 #include "pavos_config.h"
 #include "pavos_types.h"
 
+#define TASK_YIELD                               __asm__("svc #0x1 \n");
+
 typedef enum{
 
 	TASK_RUNNING,
@@ -20,15 +22,14 @@ typedef enum{
 }task_state;
 
 /*Task control block structure for task*/
-struct tcb{
+typedef struct tcb{
 
 	uint32_t        	 *stack_ptr;
 	task_state    		      state;
 	uint32_t			sleep_ticks;
     struct list_item           self;
-};
+}task_t;
 
-//typedef struct tcb task_t;
 
 /*
  * Creates a new task using static allocation.
@@ -58,7 +59,7 @@ void task_create(		void (*task_function)(void),
  * - sp_ld:	 Stack pointer of a task whose context will be loaded
  * - return: nothing
  * */
-__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld);
+//__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld);
 
 
 /*
@@ -67,6 +68,24 @@ __attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_l
  * */
 struct tcb *get_top_prio_task(void);
 
+
+/*
+ * Starts the first task
+ * - current: task to start first
+ * */
+__attribute__((naked)) void scheduler_start_task(struct tcb **current);
+
+
+/*
+ * Pends a context switch
+ * */
+void pend_context_switch(void);
+
+
+/*
+ * Returns currently running task
+ * */
+struct tcb *get_current_running_task(void);
 
 /*
  * Block currently running task.
