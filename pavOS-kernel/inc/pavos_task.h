@@ -12,7 +12,7 @@
 #include "pavos_config.h"
 #include "pavos_types.h"
 
-#define TASK_YIELD                               __asm__("svc #0x1 \n");
+#define TASK_YIELD          __asm__ __volatile__ ("svc #0x1 \n");
 
 typedef enum{
 
@@ -42,11 +42,10 @@ typedef struct tcb{
  * - stack_size:   a size of the user allocated stack
  * - return:	   nothing
  * */
-void task_create(		void (*task_function)(void),
-						struct tcb *tcb,
-						uint32_t *stack,
-						uint32_t stack_size,
-						uint8_t priority);
+void task_create( void (*task_function)(void), struct tcb *tcb,
+						                       uint32_t *stack,
+						                   uint32_t stack_size,
+						                     uint8_t priority);
 
 
 /*
@@ -107,6 +106,7 @@ void task_block(struct list *queue);
 struct tcb *task_unblock(struct list *queue);
 
 
+void ktask_sleep(uint32_t ms);
 /*
  * Suspends task for ms amount of milliseconds
  * */

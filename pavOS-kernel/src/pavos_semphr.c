@@ -21,7 +21,6 @@ void semaphore_bin_create(semaphore_t *sem, uint32_t init){
 	return semaphore_count_create(sem, init, 1);
 }
 
-
 void mutex_create(semaphore_t *mtx){
 	
     return semaphore_bin_create(mtx, 1);
@@ -29,6 +28,10 @@ void mutex_create(semaphore_t *mtx){
 
 
 void semaphore_take(semaphore_t *sem){
+
+    __asm__ __volatile__("svc #0x3\n");
+}
+void ksemaphore_take(semaphore_t *sem){
 
 	INTERRUPTS_DISABLE;
 	{
@@ -41,7 +44,12 @@ void semaphore_take(semaphore_t *sem){
 	INTERRUPTS_ENABLE;
 }
 
+
 void semaphore_give(semaphore_t *sem){
+    
+    __asm__ __volatile__("svc #0x4\n");
+}
+void ksemaphore_give(semaphore_t *sem){
 
 	INTERRUPTS_DISABLE;
 	{
@@ -58,17 +66,22 @@ void semaphore_give(semaphore_t *sem){
 	INTERRUPTS_ENABLE;
 }
 
+
 void mutex_lock(semaphore_t *mtx){
 
-	INTERRUPTS_DISABLE;
-	{
-		struct tcb *current = get_current_running_task();
+    __asm__ __volatile__( "svc #0x5\n" );
+}
+void kmutex_lock(semaphore_t *mtx){
 
-		if(mtx->count == mtx->limit){
-			mtx->count--;
-			mtx->owner = current;
-		}
-		else{
+    INTERRUPTS_DISABLE;
+	{
+		struct tcb *cur = get_current_running_task();
+    
+        mtx->count--;
+        if(mtx->count == 0){
+            mtx->owner = cur;
+        }
+        else{
 			task_block( &(mtx->wait) );
 		}
 	}
@@ -77,6 +90,11 @@ void mutex_lock(semaphore_t *mtx){
 
 
 void mutex_release(semaphore_t *mtx){
+
+    __asm__ __volatile__( "svc #0x6\n");
+
+}
+void kmutex_release(semaphore_t *mtx){
 
 	INTERRUPTS_DISABLE;
 	{

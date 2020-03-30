@@ -46,7 +46,15 @@ void semaphore_bin_create(semaphore_t *sem, uint32_t init);
 void mutex_create(semaphore_t *sem);
 
 
-/* Take counting semaphore
+/* 
+ * Take semaphore inside kernel. 
+ * Must be used and called only by the kernel.
+ * - sem:    pointer to a semaphore
+ * - return: nothing
+ * */
+void ksemaphore_take(semaphore_t *sem);
+/* 
+ * Take semaphore. Uses supervisor call(svc)
  * - sem:    pointer to a semaphore
  * - return  nothing
  * */
@@ -54,12 +62,19 @@ void semaphore_take(semaphore_t *sem);
 
 
 /*
+ * Give semaphore inside kernel.
+ * - sem: pointer to a semaphore
+ * */
+void ksemaphore_give(semaphore_t *sem);
+/*
  * Gives the semaphore
  * - sem:    pointer to a semaphore
  * - return: nothing
  * */
 void semaphore_give(semaphore_t *sem);
 
+
+void kmutex_lock(semaphore_t *mtx);
 /*
  * Takes the mutex lock. If lock is not available the task
  * trying to take the lock is suspended until the lock is available
@@ -69,6 +84,7 @@ void semaphore_give(semaphore_t *sem);
 void mutex_lock(semaphore_t *mtx);
 
 
+void kmutex_release(semaphore_t *mtx);
 /*
  * Releases the mutex lock.
  * - mtx: pointer to a mutex

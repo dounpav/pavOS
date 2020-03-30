@@ -11,8 +11,6 @@
 
 static void C_SVC_Handler(uint32_t *svc_args){
 
-	uint8_t svc_number;
-
 	/*
 	 * r0 - svc_args[0]
 	 * r1 - svc_args[1]
@@ -24,28 +22,31 @@ static void C_SVC_Handler(uint32_t *svc_args){
 	 * Retrieve svc number from the svc instruction itself
 	 * by subtracting 2 bytes from pc bytes because instruction is 16bits long
 	 * */
-	svc_number = ( ( uint8_t * )svc_args[ 6 ] )[ -2 ] ;
-
+	uint8_t svc_number = ((uint8_t *)svc_args[6])[-2];
 	switch(svc_number)
 	{
-	case 0: /* empty statement */ ;
+	case 0: 
+        /* empty dummy statement */ ;
         struct tcb *cur = get_current_running_task();
 		scheduler_start_task(&cur);
 		break;
 	case 1:
 		pend_context_switch();
 		break;
-	case 2:
-		// semaphore take
-		break;
+    case 2:
+        ktask_sleep( (uint32_t) svc_args[0] );
+        break;
 	case 3:
-		// semaphore give
+        ksemaphore_take( (struct semaphore *)svc_args[0] );
 		break;
 	case 4:
-		// mutex lock
+        ksemaphore_give( (struct semaphore *)svc_args[0] );
 		break;
 	case 5:
-		// mutex release
+        kmutex_lock( (struct semaphore *)svc_args[0] );
+		break;
+	case 6:
+        kmutex_release( (struct semaphore *)svc_args[0] );
 		break;
 	default:
 		break;
