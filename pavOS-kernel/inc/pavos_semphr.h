@@ -14,8 +14,8 @@ typedef struct semaphore{
 
 	int32_t          count;	 // semaphore count value
 	int32_t          limit;	 // semaphore limit value
-	struct list       wait;	 // semaphore wait queue
-	struct tcb  *owner;  // current owner of the mutex lock
+	struct list wait_queue;	 // semaphore wait queue
+	struct tcb     *holder;  // current holder of the mutex lock
 }semaphore_t;
 
 /*
@@ -76,7 +76,7 @@ void semaphore_give(semaphore_t *sem);
 
 void kmutex_lock(semaphore_t *mtx);
 /*
- * Takes the mutex lock. If lock is not available the task
+ * Locks mutex. If lock is not available the task
  * trying to take the lock is suspended until the lock is available
  * - mtx:   pointer to a mutex semaphore
  * - return nothing 
@@ -84,13 +84,13 @@ void kmutex_lock(semaphore_t *mtx);
 void mutex_lock(semaphore_t *mtx);
 
 
-void kmutex_release(semaphore_t *mtx);
+void kmutex_unlock(semaphore_t *mtx);
 /*
  * Releases the mutex lock.
  * - mtx: pointer to a mutex
  * - returns nothing
  * */
-void mutex_release(semaphore_t *mtx);
+void mutex_unlock(semaphore_t *mtx);
 
 
 

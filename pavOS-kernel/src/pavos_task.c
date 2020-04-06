@@ -87,8 +87,8 @@ __attribute__((naked)) static void init_kernel_stack(void){
 			" ldr   r0, [r0]                    \n" 
 			" ldr   r0, [r0]                    \n"     /* locate the kernel stack */
 			" msr   msp, r0                     \n"     /* now main stack pointer points to a kernel stack  */
-			" isb                               \n"     /* required to use after msr instruction with stack pointer*/
 			" dsb                               \n"     /* required to use after msr instruction with stack pointer*/
+			" isb                               \n"     /* required to use after msr instruction with stack pointer*/
 			" cpsie i                           \n"     /* enable interrupts */
 			" svc #0                            \n"     /* start first task by restoring a context */
 	);
@@ -115,7 +115,7 @@ void pend_context_switch(void){
     
     /*if ready queue is empty do not pend context switch*/
 	if( !LIST_IS_EMPTY(ready_task_queue) ){
-		NVIC_INT_CTRL_ST_REG = NVIC_PENDSVSET_BIT;
+		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
 	}
 }
 
@@ -163,7 +163,38 @@ static void schedule_task(void){
 	current_running_task = next;
 }
 
-extern void PendSV_Handler(void){
+__attribute__((naked)) extern void PendSV_Handler(void){
+
+    __asm__ __volatile__(
+
+            " cpsid i                       \n"  /* disable interrupts*/
+            " mrs r0, psp                   \n"
+            " dsb                           \n"
+            " isb                           \n"
+            " ldr r1, =current_running_task \n"
+            "                               \n"
+            " ldr r2, [r1]                  \n"
+            " stmdb r0!, {r4-r11}           \n"  /* push registers r4-r11 to stack*/
+            " str r0, [r2]                  \n"  /* save context into current tcb*/
+            "                               \n"
+            " push {lr, r1}                 \n"
+            " bl schedule_task              \n"  /* contex switch*/
+            " pop {lr, r1}                  \n"
+            "                               \n"
+            " ldr r2, [r1]                  \n"  
+            " ldr r2, [r2]                  \n"  /* load new context*/
+            " ldmia r2!, {r4-r11}           \n"  /* pop registers from new stack*/ 
+            "                               \n"
+            " msr psp, r2                   \n"  /* update process stack pointer */
+            " dsb                           \n"
+            " isb                           \n"
+            " cpsie i                       \n"
+            " bx lr                         \n"
+            
+     );
+}
+
+extern void _PendSV_Handler(void){
 
 	INTERRUPTS_DISABLE;
 
@@ -191,10 +222,10 @@ struct tcb *get_current_running_task(void){
 
 void task_block(struct list *wait){
 
-	struct tcb *current_task = current_running_task;
-	current_task->state = TASK_BLOCKED;
+	struct tcb *cur = current_running_task;
+	cur->state = TASK_BLOCKED;
 
-	list_insert_back(wait, &(current_task->self));
+	list_insert_back(wait, &(cur->self));
 	pend_context_switch();
 }
 
@@ -221,7 +252,7 @@ void ktask_sleep(uint32_t ms){
 		cur->state = TASK_BLOCKED;
 
         /* insert task to the back of the sleep queue */
-		list_insert_back(&sleep_task_queue, &(current_running_task->self));
+		list_insert_back(&sleep_task_queue, &(cur->self));
         pend_context_switch();
 	//}
     //INTERRUPTS_ENABLE;
@@ -253,9 +284,9 @@ void scheduler_start(void){
 	// Initialize interrupt priorities
 	NVIC_SetPriority(SysTick_IRQn, NVIC_PRIO_LOWEST);
 	NVIC_SetPriority(PendSV_IRQn, NVIC_PRIO_LOWEST);
-	NVIC_SetPriority(SVCall_IRQn, NVIC_PRIO_LOWEST-1);
+	NVIC_SetPriority(SVCall_IRQn, NVIC_PRIO_LOWEST);
 
-	/*start first task by initalizing first the kernel stack*/
+	/*start first task by initalizing the kernel stack*/
 	init_kernel_stack();
 }
 

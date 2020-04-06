@@ -10,10 +10,10 @@
 
 void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit){
 
-	LIST_INIT(sem->wait);
+	LIST_INIT(sem->wait_queue);
 	sem->count = init;
 	sem->limit = limit;
-	sem->owner = NULL;
+	sem->holder = NULL;
 }
 
 void semaphore_bin_create(semaphore_t *sem, uint32_t init){
@@ -32,16 +32,11 @@ void semaphore_take(semaphore_t *sem){
     __asm__ __volatile__("svc #0x3\n");
 }
 void ksemaphore_take(semaphore_t *sem){
-
-	INTERRUPTS_DISABLE;
-	{
-		sem->count--;
-		if(sem->count < 0){
-
-			task_block( &(sem->wait) );
-		}
+    
+    sem->count--;
+	if(sem->count < 0){
+        task_block( &(sem->wait_queue) );
 	}
-	INTERRUPTS_ENABLE;
 }
 
 
@@ -50,20 +45,14 @@ void semaphore_give(semaphore_t *sem){
     __asm__ __volatile__("svc #0x4\n");
 }
 void ksemaphore_give(semaphore_t *sem){
-
-	INTERRUPTS_DISABLE;
-	{
-		sem->count++;
-		if(sem->count > sem->limit){
-			sem->count = sem->limit;
-		}
-		if(sem->count <= 0){
-
-			// semaphore wakes task from waiting queue
-			task_unblock( &(sem->wait) );
-		}
+    
+    sem->count++;
+	if(sem->count > sem->limit){
+		sem->count = sem->limit;
 	}
-	INTERRUPTS_ENABLE;
+	if(sem->count <= 0){
+		task_unblock( &(sem->wait_queue) );
+	}
 }
 
 
@@ -72,37 +61,33 @@ void mutex_lock(semaphore_t *mtx){
     __asm__ __volatile__( "svc #0x5\n" );
 }
 void kmutex_lock(semaphore_t *mtx){
-
-    INTERRUPTS_DISABLE;
-	{
-		struct tcb *cur = get_current_running_task();
     
-        mtx->count--;
-        if(mtx->count == 0){
-            mtx->owner = cur;
-        }
-        else{
-			task_block( &(mtx->wait) );
-		}
-	}
-	INTERRUPTS_ENABLE;
+    struct tcb *cur = get_current_running_task();
+    
+    mtx->count--;
+    if(mtx->count == 0){
+        mtx->holder = cur;
+    }
+    else{
+        task_block( &(mtx->wait_queue) );
+    }
 }
 
 
-void mutex_release(semaphore_t *mtx){
+void mutex_unlock(semaphore_t *mtx){
 
     __asm__ __volatile__( "svc #0x6\n");
 
 }
-void kmutex_release(semaphore_t *mtx){
+void kmutex_unlock(semaphore_t *mtx){
 
 	INTERRUPTS_DISABLE;
 	{
-		struct tcb *current = get_current_running_task();
+		struct tcb *cur = get_current_running_task();
 
-		if(mtx->owner == current){
+		if(mtx->holder == cur){
 			mtx->count++;
-			task_unblock( &(mtx->wait) );
+			task_unblock( &(mtx->wait_queue) );
 		}
 	}
 	INTERRUPTS_ENABLE;

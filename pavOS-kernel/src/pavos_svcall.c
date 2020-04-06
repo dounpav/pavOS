@@ -46,7 +46,7 @@ static void C_SVC_Handler(uint32_t *svc_args){
         kmutex_lock( (struct semaphore *)svc_args[0] );
 		break;
 	case 6:
-        kmutex_release( (struct semaphore *)svc_args[0] );
+        kmutex_unlock( (struct semaphore *)svc_args[0] );
 		break;
 	default:
 		break;
