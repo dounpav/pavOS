@@ -8,6 +8,16 @@
 #include"pavos_semphr.h"
 #include"pavos_task.h"
 
+#define SVC_SEM_TAKE    3
+#define SVC_SEM_GIVE    4
+#define SVC_MTX_LOCK    5
+#define SVC_MTX_UNLOCK  6
+
+#define svc_sem_take()   syscall(SVC_SEM_TAKE)
+#define svc_sem_give()   syscall(SVC_SEM_GIVE)
+#define svc_mtx_lock()   syscall(SVC_MTX_LOCK)
+#define svc_mtx_unlock() syscall(SVC_MTX_UNLOCK)
+
 void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit){
 
 	LIST_INIT(sem->wait_queue);
@@ -27,40 +37,56 @@ void mutex_create(semaphore_t *mtx){
 }
 
 
-void semaphore_take(semaphore_t *sem){
+int semaphore_take(semaphore_t *sem){
 
-    __asm__ __volatile__("svc #0x3\n");
+    svc_sem_take();
 }
-void ksemaphore_take(semaphore_t *sem){
-    
+int ksemaphore_take(semaphore_t *sem){
+
     sem->count--;
 	if(sem->count < 0){
         task_block( &(sem->wait_queue) );
 	}
+    return PAVOS_ERR_SUCC;
 }
 
 
-void semaphore_give(semaphore_t *sem){
-    
-    __asm__ __volatile__("svc #0x4\n");
+int semaphore_give(semaphore_t *sem){
+
+    svc_sem_give();
 }
-void ksemaphore_give(semaphore_t *sem){
+int ksemaphore_give(semaphore_t *sem){
+
+    int err;
     
     sem->count++;
 	if(sem->count > sem->limit){
+
+        /*todo: kassert check if wait queue was actually empty*/
+
 		sem->count = sem->limit;
+
+        /* no task was waiting for semaphore*/
+        err = PAVOS_ERR_FAIL;
 	}
 	if(sem->count <= 0){
 		task_unblock( &(sem->wait_queue) );
+
+        /* todo: kassert if function returned NULL*/
+
+        /* semaphore was successfully incremented and waiting task unblocked */
+        err = PAVOS_ERR_SUCC;
 	}
+
+    return err;
 }
 
 
-void mutex_lock(semaphore_t *mtx){
+int mutex_lock(semaphore_t *mtx){
 
-    __asm__ __volatile__( "svc #0x5\n" );
+    svc_mtx_lock();
 }
-void kmutex_lock(semaphore_t *mtx){
+int kmutex_lock(semaphore_t *mtx){
     
     struct tcb *cur = get_current_running_task();
     
@@ -71,26 +97,31 @@ void kmutex_lock(semaphore_t *mtx){
     else{
         task_block( &(mtx->wait_queue) );
     }
+
+    /* function should always return success code*/
+    return PAVOS_ERR_SUCC;
 }
 
 
-void mutex_unlock(semaphore_t *mtx){
+int mutex_unlock(semaphore_t *mtx){
 
-    __asm__ __volatile__( "svc #0x6\n");
-
+    svc_mtx_unlock();
 }
-void kmutex_unlock(semaphore_t *mtx){
+int kmutex_unlock(semaphore_t *mtx){
 
-	INTERRUPTS_DISABLE;
-	{
-		struct tcb *cur = get_current_running_task();
+    int err;
+    struct tcb *cur = get_current_running_task();
 
-		if(mtx->holder == cur){
-			mtx->count++;
-			task_unblock( &(mtx->wait_queue) );
-		}
-	}
-	INTERRUPTS_ENABLE;
+	if(mtx->holder == cur){
+        mtx->count++;
+        task_unblock( &(mtx->wait_queue) );
+        err = PAVOS_ERR_SUCC;
+    }
+    else{
+        err = PAVOS_ERR_FAIL;
+    }
+
+    return err;
 }
 
 

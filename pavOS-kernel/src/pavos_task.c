@@ -19,7 +19,11 @@
 /* NVIC lowest interrupt priority*/
 #define NVIC_PRIO_LOWEST                         (255)
 
+#define SVC_TASK_YIELD                           (1)
+#define SVC_TASK_SLEEP                           (2)
 
+#define svc_yield()    syscall(SVC_TASK_YIELD)
+#define svc_sleep()    syscall(SVC_TASK_SLEEP)
 
 /*
  * current_running_task
@@ -74,8 +78,8 @@ void task_create(void (*task_function)(void), struct tcb *tcb,
 	/* initalize tcb as an item of list */
 	LIST_ITEM_INIT(tcb->self, tcb);
 	/* push created task to ready queue */
-	struct list_item *temp = &(tcb->self);
-	list_insert_back(&ready_task_queue, temp);
+	struct list_item *item = &(tcb->self);
+	list_insert_back(&ready_task_queue, item);
 
 }
 
@@ -83,7 +87,7 @@ __attribute__((naked)) static void init_kernel_stack(void){
 
 	__asm__ __volatile__(
 
-			" ldr   r0, =0xE000ED08             \n"     /* locating the offset of vector table */
+			" ldr   r0, =0xe000ed08             \n"     /* locating the offset of vector table */
 			" ldr   r0, [r0]                    \n" 
 			" ldr   r0, [r0]                    \n"     /* locate the kernel stack */
 			" msr   msp, r0                     \n"     /* now main stack pointer points to a kernel stack  */
@@ -103,52 +107,28 @@ __attribute__((naked)) void scheduler_start_task(struct tcb **current){
 			"	ldr r0, [r0]					\n"     /* first entry in tcb is the stack pointer*/
 			"	ldmia r0!, {r4-r11}				\n"     /* restore context */
 			"	msr psp, r0						\n"     /* update process stack pointer*/
-			"	isb								\n"
-			"   dsb                             \n"
+			"	dsb								\n"
+			"   isb                             \n"
 			"	mov lr, 0xfffffffd				\n"     /* modify exc_return value to return using process stack pointer*/
 			"   cpsie i                         \n"     /* enable interrupts*/
 			"	bx lr							\n"
 	);
 }
 
-void pend_context_switch(void){
-    
+int pend_context_switch(void){
+   
+    int ret = PAVOS_ERR_SUCC;
+
     /*if ready queue is empty do not pend context switch*/
 	if( !LIST_IS_EMPTY(ready_task_queue) ){
 		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
 	}
+    else{
+        ret = PAVOS_ERR_FAIL;
+    }
+    return ret;
 }
 
-
-__attribute__((naked)) void context_store(struct tcb **task){
-
-	__asm__ __volatile__(
-
-            " mrs r1, psp                   \n"
-            " isb                           \n"
-			" ldr   r0, [r0]                \n"
-			" stmdb r1!, {r4-r11}           \n"         /* push registers r4-r11 to task's stack*/
-            " str   r1, [r0]                \n"         /* update tcb with new stack pointer  */
-			" dsb                           \n"
-			" bx lr                         \n"
-	);
-}
-
-__attribute__((naked)) void context_restore(struct tcb **task){
-
-	__asm__ __volatile__(
-
-			" ldr    r0, [r0]                \n"
-			" ldr    r0, [r0]                \n"        /* first entry in tcb is stack pointer */
-			" ldmia  r0!, {r4-r11}           \n"        /* pop registers form the stack  */
-			" msr    psp, r0                 \n"        /* update proces stack pointer */
-			" isb                            \n"
-			" dsb                            \n"
-			" cpsie i                        \n"        /* enable interrupts */
-			" bx lr                          \n"
-	);
-
-}
 
 static void schedule_task(void){
 
@@ -179,7 +159,7 @@ __attribute__((naked)) extern void PendSV_Handler(void){
             "                               \n"
             " push {lr, r1}                 \n"
             " bl schedule_task              \n"  /* contex switch*/
-            " pop {lr, r1}                  \n"
+            " pop  {lr, r1}                 \n"
             "                               \n"
             " ldr r2, [r1]                  \n"  
             " ldr r2, [r2]                  \n"  /* load new context*/
@@ -194,21 +174,6 @@ __attribute__((naked)) extern void PendSV_Handler(void){
      );
 }
 
-extern void _PendSV_Handler(void){
-
-	INTERRUPTS_DISABLE;
-
-	/*store current task's context*/
-	context_store(&current_running_task);
-
-	/*schedule next task*/
-     schedule_task();
-
-	/*restore new task's context*/
-	context_restore(&current_running_task);
-
-	return;
-}
 
 struct tcb *get_top_prio_task(void){
 
@@ -220,11 +185,19 @@ struct tcb *get_current_running_task(void){
 	return current_running_task;
 }
 
+static void suspend_task(struct list *list, uint8_t ticks){
+
+    struct tcb *cur = current_running_task;
+    cur->sleep_ticks = ticks; 
+    cur->state = TASK_BLOCKED;
+    list_insert_back(list, &(cur->self));
+	pend_context_switch();
+}
+
 void task_block(struct list *wait){
 
 	struct tcb *cur = current_running_task;
 	cur->state = TASK_BLOCKED;
-
 	list_insert_back(wait, &(cur->self));
 	pend_context_switch();
 }
@@ -240,28 +213,41 @@ struct tcb *task_unblock(struct list *wait){
 	return task;
 }
 
-void task_sleep(uint32_t ms){
-    __asm__ __volatile__("svc #0x2\n");
+int task_sleep(uint32_t ms){
+
+    svc_sleep();
+
+    // syscall(SVC_TASK_SLEEP);
+
+/*
+	__asm__ __volatile__(" svc #2\n ");
+
+    int rc = PAVOS_ERR_SUCC;
+    SVC(SVC_TASK_SLEEP);
+    
+    return rc;
+*/
 }
-void ktask_sleep(uint32_t ms){
+int ktask_sleep(uint32_t ms){
+    
+    struct tcb *cur = current_running_task;
+	cur->sleep_ticks = ms;
+	cur->state = TASK_BLOCKED;
+	list_insert_back(&sleep_task_queue, &(cur->self));
+    pend_context_switch();
 
-	//INTERRUPTS_DISABLE;
-	//{
-		struct tcb *cur = current_running_task;
-		cur->sleep_ticks = ms;
-		cur->state = TASK_BLOCKED;
-
-        /* insert task to the back of the sleep queue */
-		list_insert_back(&sleep_task_queue, &(cur->self));
-        pend_context_switch();
-	//}
-    //INTERRUPTS_ENABLE;
+    return PAVOS_ERR_SUCC;
 }
 
-void task_yield(void){ TASK_YIELD; }
+
+int task_yield(void){ 
+
+    svc_yield();
+//    syscall(SVC_TASK_YIELD);
+}
 
 
-void idle_task(void){
+static void idle_task(void){
 
 	while(1){
 		task_yield();
@@ -270,7 +256,7 @@ void idle_task(void){
 
 void scheduler_start(void){
 
-	INTERRUPTS_DISABLE;
+	INTERRUPTS_DISABLE();
 
 	// create the idle task
 	task_create(idle_task, &idle_tcb, idle_stack, STACK_SIZE_MIN, TASK_PRIORITY_IDLE);
@@ -292,7 +278,7 @@ void scheduler_start(void){
 
 extern void SysTick_Handler(void){
 
-	INTERRUPTS_DISABLE;
+	INTERRUPTS_DISABLE();
 	{
 		struct list_item *cur_item = sleep_task_queue.head;
 		struct tcb *cur_tcb;
@@ -309,7 +295,7 @@ extern void SysTick_Handler(void){
 			cur_item = cur_item->next;
 		}
 	}
-	INTERRUPTS_ENABLE;
+	INTERRUPTS_ENABLE();
 
 }
 

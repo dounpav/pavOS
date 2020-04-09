@@ -23,6 +23,8 @@ static void C_SVC_Handler(uint32_t *svc_args){
 	 * by subtracting 2 bytes from pc bytes because instruction is 16bits long
 	 * */
 	uint8_t svc_number = ((uint8_t *)svc_args[6])[-2];
+    int ret;
+
 	switch(svc_number)
 	{
 	case 0: 
@@ -31,27 +33,30 @@ static void C_SVC_Handler(uint32_t *svc_args){
 		scheduler_start_task(&cur);
 		break;
 	case 1:
-		pend_context_switch();
+		ret = pend_context_switch();
 		break;
     case 2:
-        ktask_sleep( (uint32_t) svc_args[0] );
+        ret = ktask_sleep( (uint32_t) svc_args[0] );
         break;
 	case 3:
-        ksemaphore_take( (struct semaphore *)svc_args[0] );
+        ret = ksemaphore_take( (struct semaphore *)svc_args[0] );
 		break;
 	case 4:
-        ksemaphore_give( (struct semaphore *)svc_args[0] );
+        ret = ksemaphore_give( (struct semaphore *)svc_args[0] );
 		break;
 	case 5:
-        kmutex_lock( (struct semaphore *)svc_args[0] );
+        ret = kmutex_lock( (struct semaphore *)svc_args[0] );
 		break;
 	case 6:
-        kmutex_unlock( (struct semaphore *)svc_args[0] );
+        ret = kmutex_unlock( (struct semaphore *)svc_args[0] );
 		break;
 	default:
 		break;
 	}
-	INTERRUPTS_ENABLE;
+    // modify r0 in stack frame for return value
+    svc_args[0] = ret;
+
+	INTERRUPTS_ENABLE();
 }
 
 

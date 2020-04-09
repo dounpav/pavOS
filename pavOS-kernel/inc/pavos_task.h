@@ -12,7 +12,6 @@
 #include "pavos_config.h"
 #include "pavos_types.h"
 
-#define TASK_YIELD          __asm__ __volatile__ ("svc #0x1 \n");
 
 typedef enum{
 
@@ -48,18 +47,6 @@ void task_create( void (*task_function)(void), struct tcb *tcb,
 						                     uint8_t priority);
 
 
-/*
- * Performs context switch.
- * Function performs context switch using two stack pointers.
- * Upon returning from this function stack pointer register will be
- * using stack pointer of restored task
- *
- * - sp_st:	 Stack pointer of a task whose context will be stored
- * - sp_ld:	 Stack pointer of a task whose context will be loaded
- * - return: nothing
- * */
-//__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld);
-
 
 /*
  * Finds runnable task with top (highest runnable) priority
@@ -78,7 +65,7 @@ __attribute__((naked)) void scheduler_start_task(struct tcb **current);
 /*
  * Pends a context switch
  * */
-void pend_context_switch(void);
+int pend_context_switch(void);
 
 
 /*
@@ -106,18 +93,18 @@ void task_block(struct list *queue);
 struct tcb *task_unblock(struct list *queue);
 
 
-void ktask_sleep(uint32_t ms);
+int ktask_sleep(uint32_t ms);
 /*
  * Suspends task for ms amount of milliseconds
  * */
-void task_sleep(uint32_t ms);
+int task_sleep(uint32_t ms);
 
 
 /*
  * Yields currently running task and forces context switch
- * - return: nothing
+ * - return: always returns 1 (success)
  * */
-void task_yield(void);
+int task_yield(void);
 
 
 /*
@@ -125,7 +112,7 @@ void task_yield(void);
  * - return: nothing
  * - note: 	 this task should be always in ready queue
  * */
-void idle_task(void);
+//void idle_task(void);
 
 
 /*

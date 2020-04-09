@@ -16,8 +16,24 @@
 #include<stdint.h>
 #include<assert.h>
 
-#define INTERRUPTS_DISABLE     __disable_irq()
-#define INTERRUPTS_ENABLE	 	__enable_irq()
+#define INTERRUPTS_DISABLE()       __disable_irq()
+#define INTERRUPTS_ENABLE()	    	__enable_irq()
+
+#define PAVOS_ERR_SUCC                           0
+#define PAVOS_ERR_FAIL                          -1
+
+#define SVC(n) __asm__ __volatile__("svc %0" :: "I"(n))
+
+#define _SVC(n)  __asm__ __volatile__("svc %0 \n" :: "I"(n));      \
+                __asm__ __volatile__(" mov %0, r0 \n" : "=r"(rc))
+
+#define syscall(n){                                      \
+    int ret;                                             \
+    SVC(n);                                              \
+    __asm__ __volatile__(" mov %0, r0 \n" : "=r"(ret));  \
+    return ret;                                          \
+}                                                        
+
 
 /*
  * @brief: finds most significant bit from 32-bit value
