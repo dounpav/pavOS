@@ -115,7 +115,7 @@ int kmutex_lock(semaphore_t *mtx);
  * If mutex is already locked function returns.
  * */
 int mutex_try_lock(semaphore_t *mtx);
-//int kmutex_try_lock(semahore_t *mtx);
+int kmutex_try_lock(semaphore_t *mtx);
 
 int kmutex_unlock(semaphore_t *mtx);
 /*

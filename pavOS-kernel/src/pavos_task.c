@@ -5,7 +5,7 @@
  *      Author: pavel
  */
 
-
+#include"pavos_syscall.h"
 #include"pavos_task.h"
 
 /* NVIC Interrupt Control State Register */
@@ -19,11 +19,8 @@
 /* NVIC lowest interrupt priority*/
 #define NVIC_PRIO_LOWEST                         (255)
 
-#define SVC_TASK_YIELD                           (1)
-#define SVC_TASK_SLEEP                           (2)
+#define SCHED_RR_TIMESLICE                       (5)
 
-#define svc_yield()    syscall(SVC_TASK_YIELD)
-#define svc_sleep()    syscall(SVC_TASK_SLEEP)
 
 /*
  * current_running_task
@@ -53,9 +50,9 @@ static uint32_t idle_stack[STACK_SIZE_MIN];				// stack for idle task
 
 
 void task_create(void (*task_function)(void), struct tcb *tcb,
-		                                      uint32_t *stack,
-		                                  uint32_t stack_size,
-		                                     uint8_t priority)
+		uint32_t *stack,
+		uint32_t stack_size,
+		uint8_t priority)
 {
 	/* create stack frame as it would be created by context switch */
 
@@ -73,6 +70,7 @@ void task_create(void (*task_function)(void), struct tcb *tcb,
 
 	/* set task to ready state */
 	tcb->state = TASK_READY;
+	tcb->timeslice_ticks = SCHED_RR_TIMESLICE;
 	tcb->sleep_ticks = 0;
 
 	/* initalize tcb as an item of list */
@@ -116,27 +114,37 @@ __attribute__((naked)) void scheduler_start_task(struct tcb **current){
 }
 
 int pend_context_switch(void){
-   
-    int ret = PAVOS_ERR_SUCC;
 
-    /*if ready queue is empty do not pend context switch*/
+	int ret = PAVOS_ERR_SUCC;
+
+	/*if ready queue is empty do not pend context switch*/
 	if( !LIST_IS_EMPTY(ready_task_queue) ){
 		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
 	}
-    else{
-        ret = PAVOS_ERR_FAIL;
-    }
-    return ret;
+	else{
+		ret = PAVOS_ERR_FAIL;
+	}
+	return ret;
 }
 
 
 static void schedule_task(void){
 
-    struct tcb *cur = current_running_task;
+	struct tcb *cur = current_running_task;
 	struct list_item *item = list_remove_front(&ready_task_queue);
 	struct tcb *next = LIST_ITEM_HOLDER(struct tcb*, item);
 
 	if(cur->state != TASK_BLOCKED){
+
+#if( PAVOS_SELECTED_SCHEDULING == SCHED_RR )
+
+		// if round robin
+		if(cur->timeslice_ticks == 0){
+			cur->timeslice_ticks = SCHED_RR_TIMESLICE;
+		}
+
+#endif /* PAVOS_SELECTED_SCHEDULING */
+
 		list_insert_back(&ready_task_queue, &cur->self);
 	}
 	next->state = TASK_RUNNING;
@@ -145,33 +153,33 @@ static void schedule_task(void){
 
 __attribute__((naked)) extern void PendSV_Handler(void){
 
-    __asm__ __volatile__(
+	__asm__ __volatile__(
 
-            " cpsid i                       \n"  /* disable interrupts*/
-            " mrs r0, psp                   \n"
-            " dsb                           \n"
-            " isb                           \n"
-            " ldr r1, =current_running_task \n"
-            "                               \n"
-            " ldr r2, [r1]                  \n"
-            " stmdb r0!, {r4-r11}           \n"  /* push registers r4-r11 to stack*/
-            " str r0, [r2]                  \n"  /* save context into current tcb*/
-            "                               \n"
-            " push {lr, r1}                 \n"
-            " bl schedule_task              \n"  /* contex switch*/
-            " pop  {lr, r1}                 \n"
-            "                               \n"
-            " ldr r2, [r1]                  \n"  
-            " ldr r2, [r2]                  \n"  /* load new context*/
-            " ldmia r2!, {r4-r11}           \n"  /* pop registers from new stack*/ 
-            "                               \n"
-            " msr psp, r2                   \n"  /* update process stack pointer */
-            " dsb                           \n"
-            " isb                           \n"
-            " cpsie i                       \n"
-            " bx lr                         \n"
-            
-     );
+			" cpsid i                       \n"  /* disable interrupts*/
+			" mrs r0, psp                   \n"
+			" dsb                           \n"
+			" isb                           \n"
+			" ldr r1, =current_running_task \n"
+			"                               \n"
+			" ldr r2, [r1]                  \n"
+			" stmdb r0!, {r4-r11}           \n"  /* push registers r4-r11 to stack*/
+			" str r0, [r2]                  \n"  /* save context into current tcb*/
+			"                               \n"
+			" push {lr, r1}                 \n"
+			" bl schedule_task              \n"  /* contex switch*/
+			" pop  {lr, r1}                 \n"
+			"                               \n"
+			" ldr r2, [r1]                  \n"
+			" ldr r2, [r2]                  \n"  /* load new context*/
+			" ldmia r2!, {r4-r11}           \n"  /* pop registers from new stack*/
+			"                               \n"
+			" msr psp, r2                   \n"  /* update process stack pointer */
+			" dsb                           \n"
+			" isb                           \n"
+			" cpsie i                       \n"
+			" bx lr                         \n"
+
+	);
 }
 
 
@@ -187,10 +195,10 @@ struct tcb *get_current_running_task(void){
 
 static void suspend_task(struct list *list, uint8_t ticks){
 
-    struct tcb *cur = current_running_task;
-    cur->sleep_ticks = ticks; 
-    cur->state = TASK_BLOCKED;
-    list_insert_back(list, &(cur->self));
+	struct tcb *cur = current_running_task;
+	cur->sleep_ticks = ticks;
+	cur->state = TASK_BLOCKED;
+	list_insert_back(list, &(cur->self));
 	pend_context_switch();
 }
 
@@ -205,45 +213,37 @@ void task_block(struct list *wait){
 struct tcb *task_unblock(struct list *wait){
 
 	struct list_item *item = list_remove_front(wait);
-	struct tcb *task = LIST_ITEM_HOLDER(struct tcb*, item);
+	struct tcb *task = NULL;
 
-	task->state = TASK_READY;
-	list_insert_back(&ready_task_queue, &task->self);
+	if(item){
+
+		struct tcb *task = LIST_ITEM_HOLDER(struct tcb*, item);
+		task->state = TASK_READY;
+		list_insert_back(&ready_task_queue, &task->self);
+	}
 
 	return task;
 }
 
-int task_sleep(uint32_t ms){
+__attribute__((inline)) int task_sleep(uint32_t ms){
 
-    svc_sleep();
-
-    // syscall(SVC_TASK_SLEEP);
-
-/*
-	__asm__ __volatile__(" svc #2\n ");
-
-    int rc = PAVOS_ERR_SUCC;
-    SVC(SVC_TASK_SLEEP);
-    
-    return rc;
-*/
+    return sys_call(SYS_TASK_SLEEP, &ms);
 }
 int ktask_sleep(uint32_t ms){
-    
-    struct tcb *cur = current_running_task;
+
+	struct tcb *cur = current_running_task;
 	cur->sleep_ticks = ms;
 	cur->state = TASK_BLOCKED;
 	list_insert_back(&sleep_task_queue, &(cur->self));
-    pend_context_switch();
+	pend_context_switch();
 
-    return PAVOS_ERR_SUCC;
+	return PAVOS_ERR_SUCC;
 }
 
 
 int task_yield(void){ 
 
-    svc_yield();
-//    syscall(SVC_TASK_YIELD);
+    return sys_call(SYS_TASK_YIELD, NULL);
 }
 
 
@@ -260,6 +260,7 @@ void scheduler_start(void){
 
 	// create the idle task
 	task_create(idle_task, &idle_tcb, idle_stack, STACK_SIZE_MIN, TASK_PRIORITY_IDLE);
+	idle_tcb.timeslice_ticks = 1;
 
 	// first task to run
 	current_running_task = get_top_prio_task();
@@ -280,6 +281,21 @@ extern void SysTick_Handler(void){
 
 	INTERRUPTS_DISABLE();
 	{
+
+		/*
+		 * Round Robin Scheduling:
+		 * if task's time slice is drained to zero pend context switch
+		 * */
+		struct tcb *cur = current_running_task;
+		if( (--cur->timeslice_ticks) == 0 ){
+
+			/* if current task is the only task possible to run
+			 * renew it's timeslice */
+			if(pend_context_switch() == PAVOS_ERR_FAIL){
+				cur->timeslice_ticks = SCHED_RR_TIMESLICE;
+			}
+		}
+
 		struct list_item *cur_item = sleep_task_queue.head;
 		struct tcb *cur_tcb;
 

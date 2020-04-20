@@ -25,6 +25,7 @@ typedef struct tcb{
 
 	uint32_t        	 *stack_ptr;
 	task_state    		      state;
+    uint32_t        timeslice_ticks;
 	uint32_t			sleep_ticks;
     struct list_item           self;
 }task_t;
@@ -108,15 +109,7 @@ int task_yield(void);
 
 
 /*
- * Idle task that runs when no other task is ready to run
- * - return: nothing
- * - note: 	 this task should be always in ready queue
- * */
-//void idle_task(void);
-
-
-/*
- * Start scheduler and choose task to run first
+ * Starts scheduler and chooses task to run first
  * - return: nothing
  * */
 void scheduler_start(void);

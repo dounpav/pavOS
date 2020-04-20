@@ -8,6 +8,11 @@
 #ifndef PAVOS_CONFIG_H_
 #define PAVOS_CONFIG_H_
 
+#define SCHED_CP                         0
+#define SCHED_RR                         1  
+
+#define PAVOS_SELECTED_SCHEDULING        SCHED_RR
+
 #define CPU_CLOCK_RATE_HZ 				72000000
 #define SYSTICK_RATE_HZ 				1000
 
