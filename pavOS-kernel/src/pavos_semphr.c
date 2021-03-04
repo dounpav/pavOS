@@ -16,7 +16,7 @@
 #define m_svcall_mutex_try_lock(mtx)		svcall(SVC_MTX_TLOCK, mtx, NULL, NULL)
 #define m_svcall_mutex_unlock(mtx)		svcall(SVC_MTX_UNLOCK, mtx, NULL, NULL)
 
-void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit)
+void semaphore_create_cnt(semphr_t *sem, uint32_t init, uint32_t limit)
 {
 	LIST_INIT(sem->wait_queue);
 	sem->count = init;
@@ -24,22 +24,22 @@ void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit)
 	sem->holder = NULL;
 }
 
-void semaphore_bin_create(semaphore_t *sem, uint32_t init)
+void semaphore_create_bin(semphr_t *sem, uint32_t init)
 {
-	return semaphore_count_create(sem, init, 1);
+	return semaphore_create_cnt(sem, init, 1);
 }
 
-void mutex_create(semaphore_t *mtx)
+void mutex_create(semphr_t *mtx)
 {
-	return semaphore_bin_create(mtx, 1);
+	return semaphore_create_bin(mtx, 1);
 }
 
-
-int semaphore_take(semaphore_t *sem)
+int semaphore_take(semphr_t *sem)
 {
 	return m_svcall_semphr_take(sem);
 }
-int _svc_semaphore_take(semaphore_t *sem)
+
+int _svc_semphr_take(struct _semphr *sem)
 {
 	sem->count--;
 	if(sem->count < 0)
@@ -50,11 +50,11 @@ int _svc_semaphore_take(semaphore_t *sem)
 }
 
 
-int semaphore_try_take(semaphore_t *sem)
+int semaphore_try_take(semphr_t *sem)
 {
 	return m_svcall_semphr_try_take(sem);
 }
-int _svc_semaphore_try_take(semaphore_t *sem)
+int _svc_semphr_try_take(struct _semphr *sem)
 {
 	int ret = PAVOS_ERR_SUCC;
 
@@ -71,11 +71,11 @@ int _svc_semaphore_try_take(semaphore_t *sem)
 }
 
 
-int semaphore_give(semaphore_t *sem)
+int semaphore_give(semphr_t *sem)
 {
 	return m_svcall_semphr_give(sem);
 }
-int _svc_semaphore_give(semaphore_t *sem)
+int _svc_semphr_give(struct _semphr *sem)
 {
 	int ret;
 
@@ -103,11 +103,11 @@ int _svc_semaphore_give(semaphore_t *sem)
 }
 
 
-int mutex_lock(semaphore_t *mtx)
+int mutex_lock(semphr_t *mtx)
 {
 	return m_svcall_mutex_lock(mtx);
 }
-int _svc_mutex_lock(semaphore_t *mtx)
+int _svc_mutex_lock(struct _semphr *mtx)
 {
 	struct tcb *cur = get_current_running_task();
 
@@ -126,11 +126,11 @@ int _svc_mutex_lock(semaphore_t *mtx)
 }
 
 
-int mutex_try_lock(semaphore_t *mtx)
+int mutex_try_lock(semphr_t *mtx)
 {
 	return m_svcall_mutex_try_lock(mtx);
 }
-int _svc_mutex_try_lock(semaphore_t *mtx)
+int _svc_mutex_try_lock(struct _semphr *mtx)
 {
 	int ret = PAVOS_ERR_SUCC;
 	struct tcb *cur = get_current_running_task();
@@ -180,11 +180,11 @@ static int kmutex_try_locknew(semaphore_t *mtx){
 
 */
 
-int mutex_unlock(semaphore_t *mtx)
+int mutex_unlock(semphr_t *mtx)
 {
 	return m_svcall_mutex_unlock(mtx);
 }
-int _svc_mutex_unlock(semaphore_t *mtx)
+int _svc_mutex_unlock(struct _semphr *mtx)
 {
 	int ret;
 	struct tcb *cur = get_current_running_task();

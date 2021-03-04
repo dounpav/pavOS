@@ -10,13 +10,13 @@
 
 #include "pavos_list.h"
 
-typedef struct semaphore{
+typedef struct _semphr{
 
 	int32_t          count;	 // semaphore count value
 	int32_t          limit;	 // semaphore limit value
 	struct list wait_queue;	 // semaphore wait queue
 	struct tcb     *holder;  // current holder of the mutex lock
-}semaphore_t;
+}semphr_t;
 
 /*
  * Initializes counting semaphore
@@ -25,7 +25,7 @@ typedef struct semaphore{
  * - limit:  limit for semaphore count value
  * - return: nothing
  * */
-void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit);
+void semaphore_create_cnt(semphr_t *sem, uint32_t init, uint32_t limit);
 
 
 /*
@@ -34,7 +34,7 @@ void semaphore_count_create(semaphore_t *sem, uint32_t init, uint32_t limit);
  * - init:   inital value
  * - return: nothing
  * */
-void semaphore_bin_create(semaphore_t *sem, uint32_t init);
+void semaphore_create_bin(semphr_t *sem, uint32_t init);
 
 
 /*
@@ -43,7 +43,7 @@ void semaphore_bin_create(semaphore_t *sem, uint32_t init);
  * - return: nothing
  *
  * */
-void mutex_create(semaphore_t *sem);
+void mutex_create(semphr_t *mtx);
 
 
 /* 
@@ -54,7 +54,7 @@ void mutex_create(semaphore_t *sem);
  * - sem:    pointer to a semaphore object
  * - return: nothing
  * */
-int _svc_semaphore_take(semaphore_t *sem);
+int _svc_semphr_take(struct _semphr *sem);
 /* 
  * Systemcall(svc) to take semaphore with blocking. 
  * If semaphore is not available, task requesting
@@ -64,7 +64,7 @@ int _svc_semaphore_take(semaphore_t *sem);
  * - sem:    pointer to a semaphore object
  * - return: PAVOS_ERR_SUCC
  * */
-int semaphore_take(semaphore_t *sem);
+int semaphore_take(semphr_t *sem);
 
 
 /*
@@ -74,7 +74,7 @@ int semaphore_take(semaphore_t *sem);
  *   PAVOS_ERR_SUCC if taking semaphore succeeded
  *   PAVOS_ERR_FAIL if semaphore was not available
  * */
-int _svc_semaphore_try_take(semaphore_t *sem);
+int _svc_semphr_try_take(struct _semphr *sem);
 
 /* Systemcall to take semaphore without blocking.
  * If semaphore is not available function returns
@@ -83,14 +83,14 @@ int _svc_semaphore_try_take(semaphore_t *sem);
  *   PAVOS_ERR_SUCC if taking semaphore succeeded
  *   PAVOS_ERR_FAIL if semaphore was not available
  * */
-int semaphore_try_take(semaphore_t *sem);
+int semaphore_try_take(semphr_t *sem);
 
 
 /*
  * Increment semaphore inside kernel.
  * - sem: pointer to a semaphore object
  * */
-int _svc_semaphore_give(semaphore_t *sem);
+int _svc_semphr_give(struct _semphr *sem);
 /*
  * Gives the semaphore (system call)
  * - sem:    pointer to a semaphore
@@ -98,7 +98,7 @@ int _svc_semaphore_give(semaphore_t *sem);
  *           PAVOS_ERR_SUCC if giving semaphore was successfull
  *           PAVOS_ERR_FAIL if no task was waiting for semaphore
  * */
-int semaphore_give(semaphore_t *sem);
+int semaphore_give(semphr_t *sem);
 
 
 /*
@@ -107,23 +107,22 @@ int semaphore_give(semaphore_t *sem);
  * - mtx:   pointer to a mutex semaphore
  * - return nothing 
  * */
-int mutex_lock(semaphore_t *mtx);
-int _svc_mutex_lock(semaphore_t *mtx);
+int mutex_lock(semphr_t *mtx);
+int _svc_mutex_lock(struct _semphr *mtx);
 
 /*
  * Nonblocking call to lock mutex.
  * If mutex is already locked function returns.
  * */
-int mutex_try_lock(semaphore_t *mtx);
-int _svc_mutex_try_lock(semaphore_t *mtx);
+int mutex_try_lock(semphr_t *mtx);
+int _svc_mutex_try_lock(struct _semphr *mtx);
 
-int _svc_mutex_unlock(semaphore_t *mtx);
+int _svc_mutex_unlock(struct _semphr *mtx);
 /*
  * Releases the mutex lock.
- * - mtx: pointer to a mutex
- * - returns nothing
+ * - mtx: pointer to a mutex to lock
  * */
-int mutex_unlock(semaphore_t *mtx);
+int mutex_unlock(semphr_t *mtx);
 
 
 

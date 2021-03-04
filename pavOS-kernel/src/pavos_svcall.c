@@ -44,21 +44,21 @@ static volatile void C_SVC_Handler(uint32_t *svc_args)
 			ret = _svc_task_sleep( svc_args[1] );
 		break;
 		case SVC_SEM_TAKE:
-			ret = _svc_semaphore_take( (struct semaphore *)svc_args[1] );
+			ret = _svc_semphr_take( (struct _semphr *)svc_args[1] );
 		break;
 		case SVC_SEM_TTAKE:
-			ret = _svc_semaphore_try_take( (struct semaphore *)svc_args[1] );
+			ret = _svc_semphr_try_take( (struct _semphr *)svc_args[1] );
 		case SVC_SEM_GIVE:
-			ret = _svc_semaphore_give( (struct semaphore *)svc_args[1] );
+			ret = _svc_semphr_give( (struct _semphr *)svc_args[1] );
 		break;
 		case SVC_MTX_LOCK:
-			ret = _svc_mutex_lock( (struct semaphore *)svc_args[1] );
+			ret = _svc_mutex_lock( (struct _semphr *)svc_args[1] );
 		break;
 		case SVC_MTX_TLOCK:
-			ret = _svc_mutex_try_lock( (struct semaphore *)svc_args[1] );
+			ret = _svc_mutex_try_lock( (struct _semphr *)svc_args[1] );
 		break;
 		case SVC_MTX_UNLOCK:
-			ret = _svc_mutex_unlock( (struct semaphore *)svc_args[1] );
+			ret = _svc_mutex_unlock( (struct _semphr *)svc_args[1] );
 		break;
 		default:
 		break;
