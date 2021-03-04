@@ -81,8 +81,8 @@ void task_create(void (*task_function)(void), struct tcb *tcb,
 
 }
 
-__attribute__((naked)) static void init_kernel_stack(void){
-
+__attribute__((naked)) static void init_kernel_stack(void)
+{
 	__asm__ __volatile__(
 
 		" ldr   r0, =0xe000ed08	\n" /* locating the offset of vector table */
@@ -96,8 +96,8 @@ __attribute__((naked)) static void init_kernel_stack(void){
 	);
 }
 
-__attribute__((naked)) void scheduler_start_task(struct tcb **current){
-
+__attribute__((naked)) void scheduler_start_task(struct tcb **current)
+{
 	__asm__ __volatile__(
 
 		" cpsid i		\n" /* disable interrupts*/
@@ -113,7 +113,8 @@ __attribute__((naked)) void scheduler_start_task(struct tcb **current){
 	);
 }
 
-int pend_context_switch(void){
+int pend_context_switch(void)
+{
 
 	int ret = PAVOS_ERR_SUCC;
 
@@ -128,7 +129,8 @@ int pend_context_switch(void){
 }
 
 
-static void schedule_task(void){
+static void schedule_task(void)
+{
 
 	struct tcb *cur = current_running_task;
 	struct list_item *item = list_remove_front(&ready_task_queue);
@@ -151,8 +153,8 @@ static void schedule_task(void){
 	current_running_task = next;
 }
 
-__attribute__((naked)) extern void PendSV_Handler(void){
-
+__attribute__((naked)) extern void PendSV_Handler(void)
+{
 	__asm__ __volatile__(
 
 		" cpsid i                       \n"  /* disable interrupts*/
@@ -183,18 +185,19 @@ __attribute__((naked)) extern void PendSV_Handler(void){
 }
 
 
-struct tcb *get_top_prio_task(void){
-
+struct tcb *get_top_prio_task(void)
+{
 	struct list_item *item = list_remove_front(&ready_task_queue);
 	return LIST_ITEM_HOLDER(struct tcb*, item);
 }
 
-struct tcb *get_current_running_task(void){
+struct tcb *get_current_running_task(void)
+{
 	return current_running_task;
 }
 
-static void suspend_task(struct list *list, uint8_t ticks){
-
+static void suspend_task(struct list *list, uint8_t ticks)
+{
 	struct tcb *cur = current_running_task;
 	cur->sleep_ticks = ticks;
 	cur->state = TASK_BLOCKED;
@@ -202,16 +205,16 @@ static void suspend_task(struct list *list, uint8_t ticks){
 	pend_context_switch();
 }
 
-void task_block(struct list *wait){
-
+void task_block(struct list *wait)
+{
 	struct tcb *cur = current_running_task;
 	cur->state = TASK_BLOCKED;
 	list_insert_back(wait, &(cur->self));
 	pend_context_switch();
 }
 
-struct tcb *task_unblock(struct list *wait){
-
+struct tcb *task_unblock(struct list *wait)
+{
 	struct list_item *item = list_remove_front(wait);
 	struct tcb *task = NULL;
 
@@ -225,12 +228,12 @@ struct tcb *task_unblock(struct list *wait){
 	return task;
 }
 
-__attribute__((inline)) int task_sleep(uint32_t ms){
-
+__attribute__((inline)) int task_sleep(uint32_t ms)
+{
     return svcall(SVC_TASK_SLEEP, &ms);
 }
-int ktask_sleep(uint32_t ms){
-
+int ktask_sleep(uint32_t ms)
+{
 	struct tcb *cur = current_running_task;
 	cur->sleep_ticks = ms;
 	cur->state = TASK_BLOCKED;
@@ -241,21 +244,21 @@ int ktask_sleep(uint32_t ms){
 }
 
 
-int task_yield(void){ 
-
+int task_yield(void)
+{
     return svcall(SVC_TASK_YIELD, NULL);
 }
 
 
-static void idle_task(void){
-
+static void idle_task(void)
+{
 	while(1){
 		task_yield();
 	}
 }
 
-void scheduler_start(void){
-
+void scheduler_start(void)
+{
 	INTERRUPTS_DISABLE();
 
 	// create the idle task
@@ -277,8 +280,8 @@ void scheduler_start(void){
 	init_kernel_stack();
 }
 
-extern void SysTick_Handler(void){
-
+extern void SysTick_Handler(void)
+{
 	INTERRUPTS_DISABLE();
 	{
 

@@ -43,9 +43,9 @@ typedef struct tcb{
  * - return:	   nothing
  * */
 void task_create( void (*task_function)(void), struct tcb *tcb,
-						                       uint32_t *stack,
-						                   uint32_t stack_size,
-						                     uint8_t priority);
+		uint32_t *stack,
+		uint32_t stack_size,
+		uint8_t priority);
 
 
 
