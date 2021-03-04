@@ -5,7 +5,7 @@
  *      Author: pavel
  */
 
-#include"pavos_syscall.h"
+#include"pavos_svcall.h"
 #include"pavos_semphr.h"
 #include"pavos_task.h"
 
@@ -31,7 +31,7 @@ void mutex_create(semaphore_t *mtx){
 
 int semaphore_take(semaphore_t *sem){
 
-    sys_call(SYS_SEM_TAKE, sem);
+    return svcall(SVC_SEM_TAKE, sem);
 }
 int ksemaphore_take(semaphore_t *sem){
 
@@ -45,7 +45,7 @@ int ksemaphore_take(semaphore_t *sem){
 
 int semaphore_try_take(semaphore_t *sem){
 
-    sys_call(SYS_SEM_TTAKE, sem);
+    return svcall(SVC_SEM_TTAKE, sem);
 }
 int ksemaphore_try_take(semaphore_t *sem){
 
@@ -64,7 +64,7 @@ int ksemaphore_try_take(semaphore_t *sem){
 
 int semaphore_give(semaphore_t *sem){
 
-	return sys_call(SYS_SEM_GIVE, sem);
+	return svcall(SVC_SEM_GIVE, sem);
 }
 int ksemaphore_give(semaphore_t *sem){
 
@@ -95,7 +95,7 @@ int ksemaphore_give(semaphore_t *sem){
 
 int mutex_lock(semaphore_t *mtx){
 
-	return sys_call(SYS_MTX_LOCK, mtx);
+	return svcall(SVC_MTX_LOCK, mtx);
 }
 int kmutex_lock(semaphore_t *mtx){
 
@@ -116,7 +116,7 @@ int kmutex_lock(semaphore_t *mtx){
 
 int mutex_try_lock(semaphore_t *mtx){
 
-	sys_call(SYS_MTX_TLOCK, mtx);
+	svcall(SVC_MTX_TLOCK, mtx);
 }
 int kmutex_try_lock(semaphore_t *mtx){
 
@@ -168,13 +168,13 @@ static int kmutex_try_locknew(semaphore_t *mtx){
 
 int mutex_unlock(semaphore_t *mtx){
 
-	sys_call(SYS_MTX_UNLOCK, mtx);
+	svcall(SVC_MTX_UNLOCK, mtx);
 }
 int kmutex_unlock(semaphore_t *mtx){
 
 	int ret;
 	struct tcb *cur = get_current_running_task();
-    struct tcb *tsk = NULL;
+	struct tcb *tsk = NULL;
 
 	if(mtx->holder == cur){
 

@@ -5,21 +5,21 @@
  *      Author: pavel
  */
 
-#include"pavos_syscall.h"
+#include"pavos_svcall.h"
 #include"pavos_task.h"
 
 /* NVIC Interrupt Control State Register */
-#define NVIC_INT_CTRL_ST_REG		             (*((volatile uint32_t*) 0xE000ED04))
+#define NVIC_INT_CTRL_ST_REG			(*((volatile uint32_t*) 0xE000ED04))
 /* Bit position to pend PendSV exception */
-#define NVIC_PENDSVSET_BIT			             (1 << 28)
+#define NVIC_PENDSVSET_BIT			(1 << 28)
 /* Reset value for xPSR register */
-#define xPSR_RESET_VAL				             (0x01000000)
+#define xPSR_RESET_VAL				(0x01000000)
 /* Link register reset value*/
-#define LR_RESET_VAL				             (0xffffffff)
+#define LR_RESET_VAL				(0xffffffff)
 /* NVIC lowest interrupt priority*/
-#define NVIC_PRIO_LOWEST                         (255)
+#define NVIC_PRIO_LOWEST			(255)
 
-#define SCHED_RR_TIMESLICE                       (5)
+#define SCHED_RR_TIMESLICE			(5)
 
 
 /*
@@ -85,14 +85,14 @@ __attribute__((naked)) static void init_kernel_stack(void){
 
 	__asm__ __volatile__(
 
-			" ldr   r0, =0xe000ed08             \n"     /* locating the offset of vector table */
-			" ldr   r0, [r0]                    \n" 
-			" ldr   r0, [r0]                    \n"     /* locate the kernel stack */
-			" msr   msp, r0                     \n"     /* now main stack pointer points to a kernel stack  */
-			" dsb                               \n"     /* required to use after msr instruction with stack pointer*/
-			" isb                               \n"     /* required to use after msr instruction with stack pointer*/
-			" cpsie i                           \n"     /* enable interrupts */
-			" svc #0                            \n"     /* start first task by restoring a context */
+		" ldr   r0, =0xe000ed08	\n" /* locating the offset of vector table */
+		" ldr   r0, [r0]	\n"
+		" ldr   r0, [r0]	\n" /* locate the kernel stack */
+		" msr   msp, r0		\n" /* now main stack pointer points to a kernel stack  */
+		" dsb			\n" /* required to use after msr instruction with stack pointer*/
+		" isb			\n" /* required to use after msr instruction with stack pointer*/
+		" cpsie i               \n" /* enable interrupts */
+		" svc #0                \n" /* start first task by restoring a context */
 	);
 }
 
@@ -100,16 +100,16 @@ __attribute__((naked)) void scheduler_start_task(struct tcb **current){
 
 	__asm__ __volatile__(
 
-			"   cpsid i                         \n"     /* disable interrupts*/
-			"	ldr r0, [r0]  					\n"
-			"	ldr r0, [r0]					\n"     /* first entry in tcb is the stack pointer*/
-			"	ldmia r0!, {r4-r11}				\n"     /* restore context */
-			"	msr psp, r0						\n"     /* update process stack pointer*/
-			"	dsb								\n"
-			"   isb                             \n"
-			"	mov lr, 0xfffffffd				\n"     /* modify exc_return value to return using process stack pointer*/
-			"   cpsie i                         \n"     /* enable interrupts*/
-			"	bx lr							\n"
+		" cpsid i		\n" /* disable interrupts*/
+		" ldr r0, [r0]  	\n"
+		" ldr r0, [r0]		\n" /* first entry in tcb is the stack pointer*/
+		" ldmia r0!, {r4-r11}	\n" /* restore context */
+		" msr psp, r0		\n" /* update process stack pointer*/
+		" dsb			\n"
+		" isb                   \n"
+		" mov lr, 0xfffffffd	\n" /* modify exc_return value to return using process stack pointer*/
+		" cpsie i               \n" /* enable interrupts*/
+		" bx lr			\n"
 	);
 }
 
@@ -155,29 +155,29 @@ __attribute__((naked)) extern void PendSV_Handler(void){
 
 	__asm__ __volatile__(
 
-			" cpsid i                       \n"  /* disable interrupts*/
-			" mrs r0, psp                   \n"
-			" dsb                           \n"
-			" isb                           \n"
-			" ldr r1, =current_running_task \n"
-			"                               \n"
-			" ldr r2, [r1]                  \n"
-			" stmdb r0!, {r4-r11}           \n"  /* push registers r4-r11 to stack*/
-			" str r0, [r2]                  \n"  /* save context into current tcb*/
-			"                               \n"
-			" push {lr, r1}                 \n"
-			" bl schedule_task              \n"  /* contex switch*/
-			" pop  {lr, r1}                 \n"
-			"                               \n"
-			" ldr r2, [r1]                  \n"
-			" ldr r2, [r2]                  \n"  /* load new context*/
-			" ldmia r2!, {r4-r11}           \n"  /* pop registers from new stack*/
-			"                               \n"
-			" msr psp, r2                   \n"  /* update process stack pointer */
-			" dsb                           \n"
-			" isb                           \n"
-			" cpsie i                       \n"
-			" bx lr                         \n"
+		" cpsid i                       \n"  /* disable interrupts*/
+		" mrs r0, psp                   \n"
+		" dsb                           \n"
+		" isb                           \n"
+		" ldr r1, =current_running_task \n"
+		"                               \n"
+		" ldr r2, [r1]                  \n"
+		" stmdb r0!, {r4-r11}           \n"  /* push registers r4-r11 to stack*/
+		" str r0, [r2]                  \n"  /* save context into current tcb*/
+		"                               \n"
+		" push {lr, r1}                 \n"
+		" bl schedule_task              \n"  /* contex switch*/
+		" pop  {lr, r1}                 \n"
+		"                               \n"
+		" ldr r2, [r1]                  \n"
+		" ldr r2, [r2]                  \n"  /* load new context*/
+		" ldmia r2!, {r4-r11}           \n"  /* pop registers from new stack*/
+		"                               \n"
+		" msr psp, r2                   \n"  /* update process stack pointer */
+		" dsb                           \n"
+		" isb                           \n"
+		" cpsie i                       \n"
+		" bx lr                         \n"
 
 	);
 }
@@ -227,7 +227,7 @@ struct tcb *task_unblock(struct list *wait){
 
 __attribute__((inline)) int task_sleep(uint32_t ms){
 
-    return sys_call(SYS_TASK_SLEEP, &ms);
+    return svcall(SVC_TASK_SLEEP, &ms);
 }
 int ktask_sleep(uint32_t ms){
 
@@ -243,7 +243,7 @@ int ktask_sleep(uint32_t ms){
 
 int task_yield(void){ 
 
-    return sys_call(SYS_TASK_YIELD, NULL);
+    return svcall(SVC_TASK_YIELD, NULL);
 }
 
 

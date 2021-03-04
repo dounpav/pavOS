@@ -23,11 +23,11 @@ typedef enum{
 /*Task control block structure for task*/
 typedef struct tcb{
 
-	uint32_t        	 *stack_ptr;
-	task_state    		      state;
-    uint32_t        timeslice_ticks;
-	uint32_t			sleep_ticks;
-    struct list_item           self;
+	uint32_t	     *stack_ptr;
+	task_state		  state;
+	uint32_t	timeslice_ticks;
+	uint32_t	    sleep_ticks;
+	struct list_item	   self;
 }task_t;
 
 
