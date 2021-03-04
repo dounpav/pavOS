@@ -10,7 +10,7 @@
 #include"pavos_semphr.h"
 
 
-__attribute__((naked)) uint32_t svcall(uint8_t n, void *params)
+__attribute__((naked)) uint32_t svcall(uint8_t n, void *p1, void *p2, void *p3)
 {
 	__asm__ __volatile__(
 
@@ -20,15 +20,15 @@ __attribute__((naked)) uint32_t svcall(uint8_t n, void *params)
 }
 
 
-static void C_SVC_Handler(uint32_t *svc_args)
+static volatile void C_SVC_Handler(uint32_t *svc_args)
 {
-    /*
-     * r0 - svc_args[0] contains the system call number
-     * r1 - svc_args[1] contains the system call parameters
-     * */
+	/*
+	* r0 - svc_args[0] contains the system call number
+	* r1 - svc_args[1] contains the system call parameters
+	* */
 
-    uint8_t syscall_n = svc_args[0];
-    int ret;
+	uint8_t syscall_n = svc_args[0];
+	int ret;
 
 	switch(syscall_n)
 	{
@@ -41,29 +41,29 @@ static void C_SVC_Handler(uint32_t *svc_args)
 			ret = pend_context_switch();
 		break;
 		case SVC_TASK_SLEEP:
-			ret = ktask_sleep( (uint32_t) svc_args[0] );
+			ret = _svc_task_sleep( svc_args[1] );
 		break;
 		case SVC_SEM_TAKE:
-			ret = ksemaphore_take( (struct semaphore *)svc_args[0] );
+			ret = _svc_semaphore_take( (struct semaphore *)svc_args[1] );
 		break;
 		case SVC_SEM_TTAKE:
-			ret = ksemaphore_try_take( (struct semaphore *)svc_args[0] );
+			ret = _svc_semaphore_try_take( (struct semaphore *)svc_args[1] );
 		case SVC_SEM_GIVE:
-			ret = ksemaphore_give( (struct semaphore *)svc_args[0] );
+			ret = _svc_semaphore_give( (struct semaphore *)svc_args[1] );
 		break;
 		case SVC_MTX_LOCK:
-			ret = kmutex_lock( (struct semaphore *)svc_args[0] );
+			ret = _svc_mutex_lock( (struct semaphore *)svc_args[1] );
 		break;
 		case SVC_MTX_TLOCK:
-			ret = kmutex_try_lock( (struct semaphore *)svc_args[0] );
+			ret = _svc_mutex_try_lock( (struct semaphore *)svc_args[1] );
 		break;
 		case SVC_MTX_UNLOCK:
-			ret = kmutex_unlock( (struct semaphore *)svc_args[0] );
+			ret = _svc_mutex_unlock( (struct semaphore *)svc_args[1] );
 		break;
 		default:
 		break;
 	}
-	// modify r0 in stack frame for return value
+	/* modify r0 in stack frame for return value */
 	svc_args[0] = ret;
 
 	INTERRUPTS_ENABLE();

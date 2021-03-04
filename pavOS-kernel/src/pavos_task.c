@@ -21,6 +21,9 @@
 
 #define SCHED_RR_TIMESLICE			(5)
 
+/* svcall helper functions */
+#define m_svcall_task_yield()           svcall(SVC_TASK_YIELD, NULL, NULL, NULL)
+#define m_svcall_task_sleep(ms)         svcall(SVC_TASK_SLEEP, ms, NULL, NULL)
 
 /*
  * current_running_task
@@ -45,8 +48,8 @@ static struct list ready_task_queue = LIST_INITIAL_CONTENT;
 static struct list sleep_task_queue = LIST_INITIAL_CONTENT;
 
 
-static struct tcb idle_tcb;								// task control block for the idle task
-static uint32_t idle_stack[STACK_SIZE_MIN];				// stack for idle task
+static struct tcb idle_tcb;			// task control block for the idle task
+static uint32_t idle_stack[STACK_SIZE_MIN];	// stack for idle task
 
 
 void task_create(void (*task_function)(void), struct tcb *tcb,
@@ -115,7 +118,6 @@ __attribute__((naked)) void scheduler_start_task(struct tcb **current)
 
 int pend_context_switch(void)
 {
-
 	int ret = PAVOS_ERR_SUCC;
 
 	/*if ready queue is empty do not pend context switch*/
@@ -131,7 +133,6 @@ int pend_context_switch(void)
 
 static void schedule_task(void)
 {
-
 	struct tcb *cur = current_running_task;
 	struct list_item *item = list_remove_front(&ready_task_queue);
 	struct tcb *next = LIST_ITEM_HOLDER(struct tcb*, item);
@@ -228,11 +229,12 @@ struct tcb *task_unblock(struct list *wait)
 	return task;
 }
 
-__attribute__((inline)) int task_sleep(uint32_t ms)
+int task_sleep(uint32_t ms)
 {
-    return svcall(SVC_TASK_SLEEP, &ms);
+	return m_svcall_task_sleep((void*)ms);
 }
-int ktask_sleep(uint32_t ms)
+
+int _svc_task_sleep(uint32_t ms)
 {
 	struct tcb *cur = current_running_task;
 	cur->sleep_ticks = ms;
@@ -244,9 +246,10 @@ int ktask_sleep(uint32_t ms)
 }
 
 
+
 int task_yield(void)
 {
-    return svcall(SVC_TASK_YIELD, NULL);
+	return m_svcall_task_yield();
 }
 
 
@@ -284,7 +287,6 @@ extern void SysTick_Handler(void)
 {
 	INTERRUPTS_DISABLE();
 	{
-
 		/*
 		 * Round Robin Scheduling:
 		 * if task's time slice is drained to zero pend context switch

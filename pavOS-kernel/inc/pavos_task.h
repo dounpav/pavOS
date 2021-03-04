@@ -94,7 +94,7 @@ void task_block(struct list *queue);
 struct tcb *task_unblock(struct list *queue);
 
 
-int ktask_sleep(uint32_t ms);
+int _svc_task_sleep(uint32_t ms);
 /*
  * Suspends task for ms amount of milliseconds
  * */

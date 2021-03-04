@@ -21,7 +21,7 @@
 #define SVC_MTX_UNLOCK  8
 
 
-__attribute__((naked)) uint32_t svcall(uint8_t n, void *params);
+__attribute__((naked)) uint32_t svcall(uint8_t n, void *p1, void *p2, void *p3);
 
 
 #endif /* PAVOS_SYSCALL_H_ */
