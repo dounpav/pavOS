@@ -22,8 +22,8 @@
 #define SCHED_RR_TIMESLICE			(5)
 
 /* svcall helper functions */
-#define m_svcall_task_yield()           svcall(SVC_TASK_YIELD, NULL, NULL, NULL)
-#define m_svcall_task_sleep(ms)         svcall(SVC_TASK_SLEEP, ms, NULL, NULL)
+#define m_svcall_task_yield()			svcall(SVC_TASK_YIELD, NULL, NULL, NULL)
+#define m_svcall_task_sleep(ms)			svcall(SVC_TASK_SLEEP, ms, NULL, NULL)
 
 /*
  * current_running_task
@@ -57,8 +57,8 @@ void task_create(void (*task_function)(void), task_t *task,
 		uint32_t stack_size,
 		uint8_t priority)
 {
-	/* create stack frame as it would be created by context switch */
 	struct _tcb *tcb = (struct _tcb *)task;
+	/* create stack frame as it would be created by context switch */
 
 	/* locate stack start address */
 	tcb->stack_ptr = &stack[ stack_size - (uint32_t)1 ];
@@ -117,6 +117,10 @@ __attribute__((naked)) void scheduler_start_task(struct _tcb **current)
 	);
 }
 
+// todo: _svc_pend_context_switch(void)
+// todo: _schd_pend_context_switch()
+// #define _svc_task_yield() _schd_pend_context_switch()
+
 int pend_context_switch(void)
 {
 	int ret = PAVOS_ERR_SUCC;
@@ -131,7 +135,6 @@ int pend_context_switch(void)
 	return ret;
 }
 
-
 static void schedule_task(void)
 {
 	struct _tcb *cur = current_running_task;
@@ -140,15 +143,12 @@ static void schedule_task(void)
 
 	if(cur->state != TASK_BLOCKED){
 
-#if( PAVOS_SELECTED_SCHEDULING == SCHED_RR )
-
-		// if round robin
+		/* assign task with new time slice if task's time slice
+		 * expired last time
+		 * */
 		if(cur->timeslice_ticks == 0){
 			cur->timeslice_ticks = SCHED_RR_TIMESLICE;
 		}
-
-#endif /* PAVOS_SELECTED_SCHEDULING */
-
 		_list_insert_back(&ready_task_queue, &cur->self);
 	}
 	next->state = TASK_RUNNING;
