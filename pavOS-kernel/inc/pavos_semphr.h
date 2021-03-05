@@ -15,7 +15,7 @@ typedef struct _semphr{
 	int32_t			count;	 // semaphore count value
 	int32_t			limit;	 // semaphore limit value
 	struct _list	   wait_queue;	 // semaphore wait queue
-	struct tcb	      *holder;	 // current holder of the mutex lock
+	struct _tcb	      *holder;	 // current holder of the mutex lock
 }semphr_t;
 
 /*

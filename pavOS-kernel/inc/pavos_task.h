@@ -21,7 +21,7 @@ typedef enum{
 }task_state;
 
 /*Task control block structure for task*/
-typedef struct tcb{
+typedef struct _tcb{
 
 	uint32_t	     *stack_ptr;
 	task_state		  state;
@@ -42,7 +42,7 @@ typedef struct tcb{
  * - stack_size:   a size of the user allocated stack
  * - return:	   nothing
  * */
-void task_create( void (*task_function)(void), struct tcb *tcb,
+void task_create( void (*task_function)(void), task_t *task,
 		uint32_t *stack,
 		uint32_t stack_size,
 		uint8_t priority);
@@ -53,14 +53,14 @@ void task_create( void (*task_function)(void), struct tcb *tcb,
  * Finds runnable task with top (highest runnable) priority
  * - return: task with top priority
  * */
-struct tcb *get_top_prio_task(void);
+struct _tcb *get_top_prio_task(void);
 
 
 /*
  * Starts the first task
  * - current: task to start first
  * */
-__attribute__((naked)) void scheduler_start_task(struct tcb **current);
+__attribute__((naked)) void scheduler_start_task(struct _tcb **current);
 
 
 /*
@@ -72,7 +72,7 @@ int pend_context_switch(void);
 /*
  * Returns currently running task
  * */
-struct tcb *get_current_running_task(void);
+struct _tcb *get_current_running_task(void);
 
 /*
  * Block currently running task.
@@ -91,7 +91,7 @@ void task_block(struct _list *queue);
  * - queue:             queue from which task will be popped
  * - return:			a task that has been unblocked
  * */
-struct tcb *task_unblock(struct _list *queue);
+struct _tcb *task_unblock(struct _list *queue);
 
 
 int _svc_task_sleep(uint32_t ms);

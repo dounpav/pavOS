@@ -34,7 +34,7 @@ extern void C_SVC_Handler(uint32_t *svc_args)
 	{
 		case SVC_SCHED_START:
 			/* empty dummy statement */ ;
-			struct tcb *cur = get_current_running_task();
+			struct _tcb *cur = get_current_running_task();
 			scheduler_start_task(&cur);
 		break;
 		case SVC_TASK_YIELD:

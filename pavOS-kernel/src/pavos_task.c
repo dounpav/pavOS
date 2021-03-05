@@ -30,7 +30,7 @@
  * Pointer that holds address of currently executing/running task.
  * Pointer should always point to a valid task control block
  */
-static struct tcb *current_running_task = NULL;
+static struct _tcb *current_running_task = NULL;
 
 
 /*
@@ -48,16 +48,17 @@ static struct _list ready_task_queue = m_list_initial_content;
 static struct _list sleep_task_queue = m_list_initial_content;
 
 
-static struct tcb idle_tcb;			// task control block for the idle task
+static struct _tcb idle_tcb;			// task control block for the idle task
 static uint32_t idle_stack[STACK_SIZE_MIN];	// stack for idle task
 
 
-void task_create(void (*task_function)(void), struct tcb *tcb,
+void task_create(void (*task_function)(void), task_t *task,
 		uint32_t *stack,
 		uint32_t stack_size,
 		uint8_t priority)
 {
 	/* create stack frame as it would be created by context switch */
+	struct _tcb *tcb = (struct _tcb *)task;
 
 	/* locate stack start address */
 	tcb->stack_ptr = &stack[ stack_size - (uint32_t)1 ];
@@ -99,7 +100,7 @@ __attribute__((naked)) static void init_kernel_stack(void)
 	);
 }
 
-__attribute__((naked)) void scheduler_start_task(struct tcb **current)
+__attribute__((naked)) void scheduler_start_task(struct _tcb **current)
 {
 	__asm__ __volatile__(
 
@@ -133,9 +134,9 @@ int pend_context_switch(void)
 
 static void schedule_task(void)
 {
-	struct tcb *cur = current_running_task;
+	struct _tcb *cur = current_running_task;
 	struct _item *item = _list_remove_front(&ready_task_queue);
-	struct tcb *next = m_item_parent(struct tcb*, item);
+	struct _tcb *next = m_item_parent(struct _tcb*, item);
 
 	if(cur->state != TASK_BLOCKED){
 
@@ -186,20 +187,20 @@ __attribute__((naked)) extern void PendSV_Handler(void)
 }
 
 
-struct tcb *get_top_prio_task(void)
+struct _tcb *get_top_prio_task(void)
 {
 	struct _item *item = _list_remove_front(&ready_task_queue);
-	return m_item_parent(struct tcb*, item);
+	return m_item_parent(struct _tcb*, item);
 }
 
-struct tcb *get_current_running_task(void)
+struct _tcb *get_current_running_task(void)
 {
 	return current_running_task;
 }
 
 static void suspend_task(struct _list *list, uint8_t ticks)
 {
-	struct tcb *cur = current_running_task;
+	struct _tcb *cur = current_running_task;
 	cur->sleep_ticks = ticks;
 	cur->state = TASK_BLOCKED;
 	_list_insert_back(list, &(cur->self));
@@ -208,20 +209,20 @@ static void suspend_task(struct _list *list, uint8_t ticks)
 
 void task_block(struct _list *wait)
 {
-	struct tcb *cur = current_running_task;
+	struct _tcb *cur = current_running_task;
 	cur->state = TASK_BLOCKED;
 	_list_insert_back(wait, &(cur->self));
 	pend_context_switch();
 }
 
-struct tcb *task_unblock(struct _list *wait)
+struct _tcb *task_unblock(struct _list *wait)
 {
 	struct _item *item = _list_remove_front(wait);
-	struct tcb *task = NULL;
+	struct _tcb *task = NULL;
 
 	if(item){
 
-		struct tcb *task = m_item_parent(struct tcb*, item);
+		struct _tcb *task = m_item_parent(struct _tcb*, item);
 		task->state = TASK_READY;
 		_list_insert_back(&ready_task_queue, &task->self);
 	}
@@ -236,7 +237,7 @@ int task_sleep(uint32_t ms)
 
 int _svc_task_sleep(uint32_t ms)
 {
-	struct tcb *cur = current_running_task;
+	struct _tcb *cur = current_running_task;
 	cur->sleep_ticks = ms;
 	cur->state = TASK_BLOCKED;
 	_list_insert_back(&sleep_task_queue, &(cur->self));
@@ -291,7 +292,7 @@ extern void SysTick_Handler(void)
 		 * Round Robin Scheduling:
 		 * if task's time slice is drained to zero pend context switch
 		 * */
-		struct tcb *cur = current_running_task;
+		struct _tcb *cur = current_running_task;
 		if( (--cur->timeslice_ticks) == 0 ){
 
 			/* if current task is the only task possible to run
@@ -302,15 +303,15 @@ extern void SysTick_Handler(void)
 		}
 
 		struct _item *cur_item = sleep_task_queue.head;
-		struct tcb *cur_tcb;
+		struct _tcb *cur_tcb;
 
 		while(cur_item != NULL){
 
-			cur_tcb = m_item_parent(struct tcb*, cur_item);
+			cur_tcb = m_item_parent(struct _tcb*, cur_item);
 			if(--cur_tcb->sleep_ticks == 0){
 
 				struct _item *item = _list_remove(&sleep_task_queue, cur_item);
-				struct tcb *ready_task = m_item_parent(struct tcb*, item);
+				struct _tcb *ready_task = m_item_parent(struct _tcb*, item);
 				_list_insert_back(&ready_task_queue, &ready_task->self);
 			}
 			cur_item = cur_item->next;

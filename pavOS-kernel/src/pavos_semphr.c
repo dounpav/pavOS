@@ -109,7 +109,7 @@ int mutex_lock(semphr_t *mtx)
 }
 int _svc_mutex_lock(struct _semphr *mtx)
 {
-	struct tcb *cur = get_current_running_task();
+	struct _tcb *cur = get_current_running_task();
 
 	mtx->count--;
 	if(mtx->count == 0)
@@ -133,7 +133,7 @@ int mutex_try_lock(semphr_t *mtx)
 int _svc_mutex_try_lock(struct _semphr *mtx)
 {
 	int ret = PAVOS_ERR_SUCC;
-	struct tcb *cur = get_current_running_task();
+	struct _tcb *cur = get_current_running_task();
 
     /*
      * does not support recursive mutexes yet
@@ -187,8 +187,8 @@ int mutex_unlock(semphr_t *mtx)
 int _svc_mutex_unlock(struct _semphr *mtx)
 {
 	int ret;
-	struct tcb *cur = get_current_running_task();
-	struct tcb *tsk = NULL;
+	struct _tcb *cur = get_current_running_task();
+	struct _tcb *tsk = NULL;
 
 	if(mtx->holder == cur)
 	{
