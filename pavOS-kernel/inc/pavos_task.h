@@ -27,7 +27,7 @@ typedef struct tcb{
 	task_state		  state;
 	uint32_t	timeslice_ticks;
 	uint32_t	    sleep_ticks;
-	struct list_item	   self;
+	struct _item		   self;
 }task_t;
 
 
@@ -81,7 +81,7 @@ struct tcb *get_current_running_task(void);
  * - queue:  queue to which task will be added
  * - return: nothing
  * */
-void task_block(struct list *queue);
+void task_block(struct _list *queue);
 
 
 /*
@@ -91,7 +91,7 @@ void task_block(struct list *queue);
  * - queue:             queue from which task will be popped
  * - return:			a task that has been unblocked
  * */
-struct tcb *task_unblock(struct list *queue);
+struct tcb *task_unblock(struct _list *queue);
 
 
 int _svc_task_sleep(uint32_t ms);

@@ -18,7 +18,7 @@
 
 void semaphore_create_cnt(semphr_t *sem, uint32_t init, uint32_t limit)
 {
-	LIST_INIT(sem->wait_queue);
+	m_list_init(sem->wait_queue);
 	sem->count = init;
 	sem->limit = limit;
 	sem->holder = NULL;

@@ -4,7 +4,7 @@
 
 #include "pavos_list.h"
 
-struct list_item* list_insert_back(struct list *list, struct list_item *item)
+struct _item* _list_insert_back(struct _list *list, struct _item *item)
 {
 	if(list == NULL) return NULL;
 	if(item == NULL) return NULL;
@@ -20,24 +20,25 @@ struct list_item* list_insert_back(struct list *list, struct list_item *item)
 	}
 	else
 	{
-		struct list_item *old_tail = list->tail;
+		struct _item *old_tail = list->tail;
 		list->tail = item;
-		item->prev = old_tail;
-		old_tail->next = item;
+		item->next = old_tail;
+		old_tail->prev = item;
+		item->prev = NULL;
 		list->size++;
 	}
 
 	return list->tail;
 }
 
-struct list_item* list_remove_front(struct list *list)
+struct _item* _list_remove_front(struct _list *list)
 {
 	if(list == NULL) return NULL;
 
 	if(list->size == 0) return NULL;
 
-	struct list_item *old_head = list->head;
-	struct list_item *new_head = old_head->next;
+	struct _item *old_head = list->head;
+	struct _item *new_head = old_head->next;
 
 	if(new_head != NULL)
 	{
@@ -61,13 +62,13 @@ struct list_item* list_remove_front(struct list *list)
 	return old_head;
 }
 
-struct list_item *list_remove_back(struct list *list)
+struct _item *_list_remove_back(struct _list *list)
 {
 	if(list == NULL) return NULL;
 	if(list->size == 0) return NULL;
 
-	struct list_item *old_tail = list->tail;
-	struct list_item *new_tail = old_tail->prev;
+	struct _item *old_tail = list->tail;
+	struct _item *new_tail = old_tail->next;
 
 	if(new_tail == NULL)
 	{
@@ -89,7 +90,7 @@ struct list_item *list_remove_back(struct list *list)
 	return old_tail;
 }
 
-struct list_item* list_remove(struct list *list, struct list_item *item)
+struct _item *_list_remove(struct _list *list, struct _item *item)
 {
 	if(item == NULL) return NULL;
 
@@ -98,7 +99,7 @@ struct list_item* list_remove(struct list *list, struct list_item *item)
 	 * */
 	 if(list->head == item)
 	 {
-		 return list_remove_front(list);
+		 return _list_remove_front(list);
 	 }
 
 	/*
@@ -106,7 +107,7 @@ struct list_item* list_remove(struct list *list, struct list_item *item)
 	 * */
 	 else if(list->tail == item)
 	 {
-		 return list_remove_back(list);
+		 return _list_remove_back(list);
 	 }
 
 	 /*
@@ -119,8 +120,8 @@ struct list_item* list_remove(struct list *list, struct list_item *item)
 			 return NULL;
 		 }
 
-		 struct list_item *prv_item = item->prev;
-		 struct list_item *nxt_item = item->next;
+		 struct _item *prv_item = item->prev;
+		 struct _item *nxt_item = item->next;
 
 		 prv_item->next = nxt_item;
 		 nxt_item->prev = prv_item;

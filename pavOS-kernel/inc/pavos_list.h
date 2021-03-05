@@ -9,55 +9,54 @@
 #define LIST_H
 
 
-#define LIST_ITEM_INIT(item, type){	\
-	item.next = NULL;				\
-	item.prev = NULL;				\
-	item.holder = (void*)type;		\
+#define m_item_init(item, type){		\
+	item.next = NULL;			\
+	item.prev = NULL;			\
+	item.parent = (void*)type;		\
 };
 
-#define LIST_INIT(list){		 	\
-	list.size = 0;					\
-	list.head = NULL;				\
-	list.tail = NULL;				\
+#define m_list_init(list){			\
+	list.size = 0;				\
+	list.head = NULL;			\
+	list.tail = NULL;			\
 };
 
-#define LIST_INITIAL_CONTENT {		\
-	.size = 0,						\
-	.head = NULL,					\
-	.tail = NULL,					\
+#define m_list_initial_content {		\
+	.size = 0,				\
+	.head = NULL,				\
+	.tail = NULL,				\
 };
 
-#define LIST_ITEM_HOLDER(type, item) (type)item->holder;
+#define m_item_parent(type, item) (type)item->parent;
 
-#define LIST_IS_EMPTY(list) (list.size == 0)
+#define m_list_is_empty(list) (list.size == 0)
 
 /*
  * List item that holds pointer to an actual data
  * */
-struct list_item{
+struct _item{
     
-    void              *holder;
-    struct list_item 	*next;
-    struct list_item 	*prev;
+	void	      *parent;
+	struct _item	*next;
+	struct _item	*prev;
 };
 
 /*
  * Doubly linked list for maintaining list items
  * */
-struct list{
+struct _list{
 
-    struct list_item *head;
-    struct list_item *tail;
-    uint8_t           size;
+	struct _item	*head;
+	struct _item	*tail;
+	uint8_t		 size;
 };
-
 
 /*
  * Insert an item to a back of the list
  * if succeeds returns pointer to a list's tail
  * else returns NULL
  * */
-struct list_item *list_insert_back(struct list *list, struct list_item *item);
+struct _item *_list_insert_back(struct _list *list, struct _item *item);
 
 
 /*
@@ -65,7 +64,7 @@ struct list_item *list_insert_back(struct list *list, struct list_item *item);
  * if succeeds returns pointer to a removed item
  * else returns NULL
  * */
-struct list_item *list_remove_front(struct list *list);
+struct _item *_list_remove_front(struct _list *list);
 
 
 /*
@@ -73,13 +72,13 @@ struct list_item *list_remove_front(struct list *list);
  * If success returns pointer to removed item
  * else returns NULL
  * */
-struct list_item *list_remove_back(struct list *list);
+struct _item *_list_remove_back(struct _list *list);
 
 
 /*
  * Removes/pops item from arbitrary position in the list
  * */
-struct list_item* list_remove(struct list *list, struct list_item *item);
+struct _item *_list_remove(struct _list *list, struct _item *item);
 
 
 

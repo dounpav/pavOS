@@ -20,7 +20,7 @@ __attribute__((naked)) uint32_t svcall(uint8_t n, void *p1, void *p2, void *p3)
 }
 
 
-static volatile void C_SVC_Handler(uint32_t *svc_args)
+extern void C_SVC_Handler(uint32_t *svc_args)
 {
 	/*
 	* r0 - svc_args[0] contains the system call number

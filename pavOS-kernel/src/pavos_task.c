@@ -38,14 +38,14 @@ static struct tcb *current_running_task = NULL;
  * Holds tasks that are ready to be scheduled.
  * Scheduler pick next task to run only from this queue
  */
-static struct list ready_task_queue = LIST_INITIAL_CONTENT;
+static struct _list ready_task_queue = m_list_initial_content;
 
 
 /*
  * sleep task queue
  * Holds tcb's of tasks that are currently sleeping
  */
-static struct list sleep_task_queue = LIST_INITIAL_CONTENT;
+static struct _list sleep_task_queue = m_list_initial_content;
 
 
 static struct tcb idle_tcb;			// task control block for the idle task
@@ -64,12 +64,12 @@ void task_create(void (*task_function)(void), struct tcb *tcb,
 	/* Leave a space to avoid possible memory corruption when returning
 	 * from exception */
 	tcb->stack_ptr--;
-	*(tcb->stack_ptr) = xPSR_RESET_VAL;                         // xPSR
+	*(tcb->stack_ptr) = xPSR_RESET_VAL;		// xPSR
 	tcb->stack_ptr--;
-	*(tcb->stack_ptr) = (uint32_t) task_function;				// PC
+	*(tcb->stack_ptr) = (uint32_t) task_function;	// PC
 	tcb->stack_ptr--;
-	*(tcb->stack_ptr) = LR_RESET_VAL;                           // LR
-	(tcb->stack_ptr) -= 13;										// r12, r4, r3, r2, r1, r0, r11, r10, r9, r8, r7, r6, r5
+	*(tcb->stack_ptr) = LR_RESET_VAL;               // LR
+	(tcb->stack_ptr) -= 13;	 // r12, r4, r3, r2, r1, r0, r11, r10, r9, r8, r7, r6, r5
 
 	/* set task to ready state */
 	tcb->state = TASK_READY;
@@ -77,10 +77,10 @@ void task_create(void (*task_function)(void), struct tcb *tcb,
 	tcb->sleep_ticks = 0;
 
 	/* initalize tcb as an item of list */
-	LIST_ITEM_INIT(tcb->self, tcb);
+	m_item_init(tcb->self, tcb);
 	/* push created task to ready queue */
-	struct list_item *item = &(tcb->self);
-	list_insert_back(&ready_task_queue, item);
+	struct _item *item = &(tcb->self);
+	_list_insert_back(&ready_task_queue, item);
 
 }
 
@@ -121,7 +121,7 @@ int pend_context_switch(void)
 	int ret = PAVOS_ERR_SUCC;
 
 	/*if ready queue is empty do not pend context switch*/
-	if( !LIST_IS_EMPTY(ready_task_queue) ){
+	if( !m_list_is_empty(ready_task_queue) ){
 		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
 	}
 	else{
@@ -134,8 +134,8 @@ int pend_context_switch(void)
 static void schedule_task(void)
 {
 	struct tcb *cur = current_running_task;
-	struct list_item *item = list_remove_front(&ready_task_queue);
-	struct tcb *next = LIST_ITEM_HOLDER(struct tcb*, item);
+	struct _item *item = _list_remove_front(&ready_task_queue);
+	struct tcb *next = m_item_parent(struct tcb*, item);
 
 	if(cur->state != TASK_BLOCKED){
 
@@ -148,7 +148,7 @@ static void schedule_task(void)
 
 #endif /* PAVOS_SELECTED_SCHEDULING */
 
-		list_insert_back(&ready_task_queue, &cur->self);
+		_list_insert_back(&ready_task_queue, &cur->self);
 	}
 	next->state = TASK_RUNNING;
 	current_running_task = next;
@@ -188,8 +188,8 @@ __attribute__((naked)) extern void PendSV_Handler(void)
 
 struct tcb *get_top_prio_task(void)
 {
-	struct list_item *item = list_remove_front(&ready_task_queue);
-	return LIST_ITEM_HOLDER(struct tcb*, item);
+	struct _item *item = _list_remove_front(&ready_task_queue);
+	return m_item_parent(struct tcb*, item);
 }
 
 struct tcb *get_current_running_task(void)
@@ -197,33 +197,33 @@ struct tcb *get_current_running_task(void)
 	return current_running_task;
 }
 
-static void suspend_task(struct list *list, uint8_t ticks)
+static void suspend_task(struct _list *list, uint8_t ticks)
 {
 	struct tcb *cur = current_running_task;
 	cur->sleep_ticks = ticks;
 	cur->state = TASK_BLOCKED;
-	list_insert_back(list, &(cur->self));
+	_list_insert_back(list, &(cur->self));
 	pend_context_switch();
 }
 
-void task_block(struct list *wait)
+void task_block(struct _list *wait)
 {
 	struct tcb *cur = current_running_task;
 	cur->state = TASK_BLOCKED;
-	list_insert_back(wait, &(cur->self));
+	_list_insert_back(wait, &(cur->self));
 	pend_context_switch();
 }
 
-struct tcb *task_unblock(struct list *wait)
+struct tcb *task_unblock(struct _list *wait)
 {
-	struct list_item *item = list_remove_front(wait);
+	struct _item *item = _list_remove_front(wait);
 	struct tcb *task = NULL;
 
 	if(item){
 
-		struct tcb *task = LIST_ITEM_HOLDER(struct tcb*, item);
+		struct tcb *task = m_item_parent(struct tcb*, item);
 		task->state = TASK_READY;
-		list_insert_back(&ready_task_queue, &task->self);
+		_list_insert_back(&ready_task_queue, &task->self);
 	}
 
 	return task;
@@ -239,7 +239,7 @@ int _svc_task_sleep(uint32_t ms)
 	struct tcb *cur = current_running_task;
 	cur->sleep_ticks = ms;
 	cur->state = TASK_BLOCKED;
-	list_insert_back(&sleep_task_queue, &(cur->self));
+	_list_insert_back(&sleep_task_queue, &(cur->self));
 	pend_context_switch();
 
 	return PAVOS_ERR_SUCC;
@@ -301,17 +301,17 @@ extern void SysTick_Handler(void)
 			}
 		}
 
-		struct list_item *cur_item = sleep_task_queue.head;
+		struct _item *cur_item = sleep_task_queue.head;
 		struct tcb *cur_tcb;
 
 		while(cur_item != NULL){
 
-			cur_tcb = LIST_ITEM_HOLDER(struct tcb*, cur_item);
+			cur_tcb = m_item_parent(struct tcb*, cur_item);
 			if(--cur_tcb->sleep_ticks == 0){
 
-				struct list_item *item = list_remove(&sleep_task_queue, cur_item);
-				struct tcb *ready_task = LIST_ITEM_HOLDER(struct tcb*, item);
-				list_insert_back(&ready_task_queue, &ready_task->self);
+				struct _item *item = _list_remove(&sleep_task_queue, cur_item);
+				struct tcb *ready_task = m_item_parent(struct tcb*, item);
+				_list_insert_back(&ready_task_queue, &ready_task->self);
 			}
 			cur_item = cur_item->next;
 		}
