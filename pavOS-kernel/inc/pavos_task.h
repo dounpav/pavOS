@@ -60,13 +60,13 @@ struct _tcb *get_top_prio_task(void);
  * Starts the first task
  * - current: task to start first
  * */
-__attribute__((naked)) void scheduler_start_task(struct _tcb **current);
+__attribute__((naked)) void _schd_start_task(struct _tcb **current);
 
 
 /*
  * Pends a context switch
  * */
-int pend_context_switch(void);
+int _schd_pend_context_switch(void);
 
 
 /*

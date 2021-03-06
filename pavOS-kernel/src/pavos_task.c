@@ -85,7 +85,7 @@ void task_create(void (*task_function)(void), task_t *task,
 
 }
 
-__attribute__((naked)) static void init_kernel_stack(void)
+__attribute__((naked)) static void _init_kernel_stack(void)
 {
 	__asm__ __volatile__(
 
@@ -100,7 +100,7 @@ __attribute__((naked)) static void init_kernel_stack(void)
 	);
 }
 
-__attribute__((naked)) void scheduler_start_task(struct _tcb **current)
+__attribute__((naked)) void _schd_start_task(struct _tcb **current)
 {
 	__asm__ __volatile__(
 
@@ -117,25 +117,21 @@ __attribute__((naked)) void scheduler_start_task(struct _tcb **current)
 	);
 }
 
-// todo: _svc_pend_context_switch(void)
-// todo: _schd_pend_context_switch()
-// #define _svc_task_yield() _schd_pend_context_switch()
-
-int pend_context_switch(void)
+int _schd_pend_context_switch(void)
 {
-	int ret = PAVOS_ERR_SUCC;
+	int ret = E_SUCC;
 
 	/*if ready queue is empty do not pend context switch*/
 	if( !m_list_is_empty(ready_task_queue) ){
 		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
 	}
 	else{
-		ret = PAVOS_ERR_FAIL;
+		ret = E_FAIL;
 	}
 	return ret;
 }
 
-static void schedule_task(void)
+void _schd_schedule_task(void)
 {
 	struct _tcb *cur = current_running_task;
 	struct _item *item = _list_remove_front(&ready_task_queue);
@@ -170,7 +166,7 @@ __attribute__((naked)) extern void PendSV_Handler(void)
 		" str r0, [r2]                  \n"  /* save context into current tcb*/
 		"                               \n"
 		" push {lr, r1}                 \n"
-		" bl schedule_task              \n"  /* contex switch*/
+		" bl _schd_schedule_task        \n"  /* contex switch*/
 		" pop  {lr, r1}                 \n"
 		"                               \n"
 		" ldr r2, [r1]                  \n"
@@ -204,7 +200,7 @@ static void suspend_task(struct _list *list, uint8_t ticks)
 	cur->sleep_ticks = ticks;
 	cur->state = TASK_BLOCKED;
 	_list_insert_back(list, &(cur->self));
-	pend_context_switch();
+	_schd_pend_context_switch();
 }
 
 void task_block(struct _list *wait)
@@ -212,7 +208,7 @@ void task_block(struct _list *wait)
 	struct _tcb *cur = current_running_task;
 	cur->state = TASK_BLOCKED;
 	_list_insert_back(wait, &(cur->self));
-	pend_context_switch();
+	_schd_pend_context_switch();
 }
 
 struct _tcb *task_unblock(struct _list *wait)
@@ -241,11 +237,10 @@ int _svc_task_sleep(uint32_t ms)
 	cur->sleep_ticks = ms;
 	cur->state = TASK_BLOCKED;
 	_list_insert_back(&sleep_task_queue, &(cur->self));
-	pend_context_switch();
+	_schd_pend_context_switch();
 
-	return PAVOS_ERR_SUCC;
+	return E_SUCC;
 }
-
 
 
 int task_yield(void)
@@ -273,7 +268,7 @@ void scheduler_start(void)
 	current_running_task = get_top_prio_task();
 
 	// Initalize systick
-	SysTick_Config(CPU_CLOCK_RATE_HZ/1000);
+	//SysTick_Config(CPU_CLOCK_RATE_HZ/1000);
 
 	// Initialize interrupt priorities
 	NVIC_SetPriority(SysTick_IRQn, NVIC_PRIO_LOWEST);
@@ -281,7 +276,7 @@ void scheduler_start(void)
 	NVIC_SetPriority(SVCall_IRQn, NVIC_PRIO_LOWEST);
 
 	/*start first task by initalizing the kernel stack*/
-	init_kernel_stack();
+	_init_kernel_stack();
 }
 
 extern void SysTick_Handler(void)
@@ -297,7 +292,7 @@ extern void SysTick_Handler(void)
 
 			/* if current task is the only task possible to run
 			 * renew it's timeslice */
-			if(pend_context_switch() == PAVOS_ERR_FAIL){
+			if(_schd_pend_context_switch() == E_FAIL){
 				cur->timeslice_ticks = SCHED_RR_TIMESLICE;
 			}
 		}

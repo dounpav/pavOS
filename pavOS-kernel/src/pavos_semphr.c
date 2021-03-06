@@ -46,7 +46,7 @@ int _svc_semphr_take(struct _semphr *sem)
 	{
 		task_block( &(sem->wait_queue) );
 	}
-	return PAVOS_ERR_SUCC;
+	return E_SUCC;
 }
 
 
@@ -56,7 +56,7 @@ int semaphore_try_take(semphr_t *sem)
 }
 int _svc_semphr_try_take(struct _semphr *sem)
 {
-	int ret = PAVOS_ERR_SUCC;
+	int ret = E_SUCC;
 
 	if(sem->count > 0)
 	{
@@ -64,7 +64,7 @@ int _svc_semphr_try_take(struct _semphr *sem)
 	}
 	else
 	{
-		ret = PAVOS_ERR_FAIL;
+		ret = E_FAIL;
 	}
 
 	return ret;
@@ -87,7 +87,7 @@ int _svc_semphr_give(struct _semphr *sem)
 		sem->count = sem->limit;
 
 		/* no task was waiting for semaphore*/
-		ret = PAVOS_ERR_FAIL;
+		ret = E_FAIL;
 	}
 	if(sem->count <= 0)
 	{
@@ -96,7 +96,7 @@ int _svc_semphr_give(struct _semphr *sem)
 		/* todo: kassert if function returned NULL*/
 
 		/* semaphore was successfully incremented and waiting task unblocked */
-		ret = PAVOS_ERR_SUCC;
+		ret = E_SUCC;
 	}
 
 	return ret;
@@ -122,7 +122,7 @@ int _svc_mutex_lock(struct _semphr *mtx)
 	}
 
 	/* function should always return success code*/
-	return PAVOS_ERR_SUCC;
+	return E_SUCC;
 }
 
 
@@ -132,7 +132,7 @@ int mutex_try_lock(semphr_t *mtx)
 }
 int _svc_mutex_try_lock(struct _semphr *mtx)
 {
-	int ret = PAVOS_ERR_SUCC;
+	int ret = E_SUCC;
 	struct _tcb *cur = get_current_running_task();
 
     /*
@@ -149,7 +149,7 @@ int _svc_mutex_try_lock(struct _semphr *mtx)
 	}
 	else
 	{
-		ret = PAVOS_ERR_FAIL;
+		ret = E_FAIL;
 	}
 
     return ret;
@@ -203,10 +203,10 @@ int _svc_mutex_unlock(struct _semphr *mtx)
 		{
 			mtx->holder = NULL;
 		}
-		ret = PAVOS_ERR_SUCC;
+		ret = E_SUCC;
 	}
 	else{
-		ret = PAVOS_ERR_FAIL;
+		ret = E_FAIL;
 	}
 
 	return ret;

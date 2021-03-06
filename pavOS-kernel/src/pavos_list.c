@@ -38,11 +38,11 @@ struct _item* _list_remove_front(struct _list *list)
 	if(list->size == 0) return NULL;
 
 	struct _item *old_head = list->head;
-	struct _item *new_head = old_head->next;
+	struct _item *new_head = old_head->prev;
 
 	if(new_head != NULL)
 	{
-		new_head->prev = NULL;
+		new_head->next = NULL;
 
 		if(list->tail == old_head)
 		{
