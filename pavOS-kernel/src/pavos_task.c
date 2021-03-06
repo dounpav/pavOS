@@ -126,7 +126,7 @@ int _schd_pend_context_switch(void)
 		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
 	}
 	else{
-		ret = E_FAIL;
+		ret = -E_FAIL;
 	}
 	return ret;
 }
@@ -189,20 +189,65 @@ struct _tcb *get_top_prio_task(void)
 	return m_item_parent(struct _tcb*, item);
 }
 
-struct _tcb *get_current_running_task(void)
+struct _tcb *_schd_current_running_task(void)
 {
 	return current_running_task;
 }
 
-static void suspend_task(struct _list *list, uint8_t ticks)
+static void _schd_suspend_task(struct _tcb *tsk, struct _list *list, uint32_t ticks)
 {
-	struct _tcb *cur = current_running_task;
-	cur->sleep_ticks = ticks;
-	cur->state = TASK_BLOCKED;
-	_list_insert_back(list, &(cur->self));
+	if(ticks > 0){
+		tsk->sleep_ticks = ticks;
+	}
+	tsk->state = TASK_BLOCKED;
+	_list_insert_back(list, &(tsk->self));
 	_schd_pend_context_switch();
 }
 
+static struct _tcb *_schd_resume_task(struct _list *list)
+{
+	struct _item *item = _list_remove_front(list);
+	struct _tcb *tsk = NULL;
+
+	/*
+	 * Usually when removing task from queue, we should expect
+	 * task to be valid
+	 * */
+	if(item != NULL){
+
+		struct _tcb *tsk = m_item_parent(struct _tcb*, item);
+		tsk->state = TASK_READY;
+		_list_insert_back(&ready_task_queue, &tsk->self);
+	}
+
+	return tsk;
+}
+
+
+void _schd_block_task(struct _list *list)
+{
+	struct _tcb *tsk = current_running_task;
+	return _schd_suspend_task(tsk, list, 0);
+}
+
+struct _tcb *_schd_unblock_task(struct _list *list)
+{
+	return _schd_resume_task(list);
+}
+
+int task_sleep(uint32_t ms)
+{
+	return m_svcall_task_sleep((void*)ms);
+}
+int _svc_task_sleep(uint32_t ms)
+{
+	struct _tcb *cur = current_running_task;
+	_schd_suspend_task(cur, &sleep_task_queue, ms);
+
+	return E_SUCC;
+}
+
+/*
 void task_block(struct _list *wait)
 {
 	struct _tcb *cur = current_running_task;
@@ -226,11 +271,6 @@ struct _tcb *task_unblock(struct _list *wait)
 	return task;
 }
 
-int task_sleep(uint32_t ms)
-{
-	return m_svcall_task_sleep((void*)ms);
-}
-
 int _svc_task_sleep(uint32_t ms)
 {
 	struct _tcb *cur = current_running_task;
@@ -241,11 +281,16 @@ int _svc_task_sleep(uint32_t ms)
 
 	return E_SUCC;
 }
-
+*/
 
 int task_yield(void)
 {
 	return m_svcall_task_yield();
+}
+
+int _svc_task_yield(void)
+{
+	return _schd_pend_context_switch();
 }
 
 
@@ -268,7 +313,7 @@ void scheduler_start(void)
 	current_running_task = get_top_prio_task();
 
 	// Initalize systick
-	//SysTick_Config(CPU_CLOCK_RATE_HZ/1000);
+	SysTick_Config(CPU_CLOCK_RATE_HZ/1000);
 
 	// Initialize interrupt priorities
 	NVIC_SetPriority(SysTick_IRQn, NVIC_PRIO_LOWEST);

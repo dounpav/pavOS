@@ -44,7 +44,7 @@ int _svc_semphr_take(struct _semphr *sem)
 	sem->count--;
 	if(sem->count < 0)
 	{
-		task_block( &(sem->wait_queue) );
+		_schd_block_task( &(sem->wait_queue) );
 	}
 	return E_SUCC;
 }
@@ -64,7 +64,7 @@ int _svc_semphr_try_take(struct _semphr *sem)
 	}
 	else
 	{
-		ret = E_FAIL;
+		ret = -E_FAIL;
 	}
 
 	return ret;
@@ -87,11 +87,11 @@ int _svc_semphr_give(struct _semphr *sem)
 		sem->count = sem->limit;
 
 		/* no task was waiting for semaphore*/
-		ret = E_FAIL;
+		ret = -E_FAIL;
 	}
 	if(sem->count <= 0)
 	{
-		task_unblock( &(sem->wait_queue) );
+		_schd_unblock_task( &(sem->wait_queue) );
 
 		/* todo: kassert if function returned NULL*/
 
@@ -109,7 +109,7 @@ int mutex_lock(semphr_t *mtx)
 }
 int _svc_mutex_lock(struct _semphr *mtx)
 {
-	struct _tcb *cur = get_current_running_task();
+	struct _tcb *cur = _schd_current_running_task();
 
 	mtx->count--;
 	if(mtx->count == 0)
@@ -118,7 +118,7 @@ int _svc_mutex_lock(struct _semphr *mtx)
 	}
 	else
 	{
-		task_block( &(mtx->wait_queue) );
+		_schd_block_task( &(mtx->wait_queue) );
 	}
 
 	/* function should always return success code*/
@@ -133,7 +133,7 @@ int mutex_try_lock(semphr_t *mtx)
 int _svc_mutex_try_lock(struct _semphr *mtx)
 {
 	int ret = E_SUCC;
-	struct _tcb *cur = get_current_running_task();
+	struct _tcb *cur = _schd_current_running_task();
 
     /*
      * does not support recursive mutexes yet
@@ -149,7 +149,7 @@ int _svc_mutex_try_lock(struct _semphr *mtx)
 	}
 	else
 	{
-		ret = E_FAIL;
+		ret = -E_FAIL;
 	}
 
     return ret;
@@ -187,7 +187,7 @@ int mutex_unlock(semphr_t *mtx)
 int _svc_mutex_unlock(struct _semphr *mtx)
 {
 	int ret;
-	struct _tcb *cur = get_current_running_task();
+	struct _tcb *cur = _schd_current_running_task();
 	struct _tcb *tsk = NULL;
 
 	if(mtx->holder == cur)
@@ -196,7 +196,7 @@ int _svc_mutex_unlock(struct _semphr *mtx)
 		/* unblock any task that from waiting queue*/
 		if(mtx->count <= 0)
 		{
-			tsk = task_unblock( &(mtx->wait_queue) );
+			tsk = _schd_unblock_task( &(mtx->wait_queue) );
 			mtx->holder = tsk;
 		}
 		else
@@ -206,7 +206,7 @@ int _svc_mutex_unlock(struct _semphr *mtx)
 		ret = E_SUCC;
 	}
 	else{
-		ret = E_FAIL;
+		ret = -E_FAIL;
 	}
 
 	return ret;

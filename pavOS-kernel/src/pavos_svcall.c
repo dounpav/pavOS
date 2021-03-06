@@ -9,7 +9,6 @@
 #include"pavos_task.h"
 #include"pavos_semphr.h"
 
-#define m_svc_task_yield()			_schd_pend_context_switch()
 
 __attribute__((naked)) uint32_t svcall(uint8_t n, void *p1, void *p2, void *p3)
 {
@@ -37,11 +36,11 @@ extern void C_SVC_Handler(uint32_t *svc_args)
 	{
 		case SVC_SCHED_START:
 			/* empty dummy statement */ ;
-			struct _tcb *cur = get_current_running_task();
+			struct _tcb *cur = _schd_current_running_task();
 			_schd_start_task(&cur);
 		break;
 		case SVC_TASK_YIELD:
-			ret = m_svc_task_yield();
+			ret = _svc_task_yield();
 		break;
 		case SVC_TASK_SLEEP:
 			ret = _svc_task_sleep( svc_args[1] );

@@ -19,8 +19,11 @@
 #define INTERRUPTS_DISABLE()		__disable_irq()
 #define INTERRUPTS_ENABLE()		__enable_irq()
 
-#define E_SUCC					 0
-#define E_FAIL					-1
+#define m_arch_intr_disable()		__disable_irq()
+#define n_arch_intr_enable()		__enable_irq()
+
+#define E_SUCC						0
+#define E_FAIL						1
 
 /*
  * @brief: finds most significant bit from 32-bit value

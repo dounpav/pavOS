@@ -72,7 +72,7 @@ int _schd_pend_context_switch(void);
 /*
  * Returns currently running task
  * */
-struct _tcb *get_current_running_task(void);
+struct _tcb *_schd_current_running_task(void);
 
 /*
  * Block currently running task.
@@ -81,7 +81,34 @@ struct _tcb *get_current_running_task(void);
  * - queue:  queue to which task will be added
  * - return: nothing
  * */
-void task_block(struct _list *queue);
+//void task_block(struct _list *queue);
+
+
+/*
+ * Suspends task from execution
+ * - tsk:	task to be suspended
+ * - from:	list to which suspended taks will be added
+ * - ticks:	amount of ticks task will be suspended
+ * - return:	suspended task
+ * */
+//void _schd_suspend_task(struct _list *list, uint8_t ticks);
+
+/*
+ * Resumes previously suspended task for execution
+ * - from:	from which queue suspened task will be resumed
+ * */
+//struct _tcb *_schd_resume_task(struct _list *list);
+
+/*
+ * This function is wrapper that calls  _schd_suspend_task()
+ * funtion with 0 ticks.
+ * */
+void _schd_block_task(struct _list *list);
+
+/*
+ * Wrapper for _shcd_resume_task()
+ * */
+struct _tcb *_schd_unblock_task(struct _list *list);
 
 
 /*
@@ -91,7 +118,7 @@ void task_block(struct _list *queue);
  * - queue:             queue from which task will be popped
  * - return:			a task that has been unblocked
  * */
-struct _tcb *task_unblock(struct _list *queue);
+//struct _tcb *task_unblock(struct _list *queue);
 
 
 int _svc_task_sleep(uint32_t ms);
@@ -100,6 +127,7 @@ int _svc_task_sleep(uint32_t ms);
  * */
 int task_sleep(uint32_t ms);
 
+int _svc_task_yield();
 
 /*
  * Yields currently running task and forces context switch
