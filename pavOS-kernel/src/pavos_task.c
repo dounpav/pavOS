@@ -40,7 +40,6 @@ static struct _tcb *current_running_task = NULL;
  */
 static struct _list ready_task_queue = m_list_initial_content;
 
-
 /*
  * sleep task queue
  * Holds tcb's of tasks that are currently sleeping
@@ -119,16 +118,8 @@ __attribute__((naked)) void _schd_start_task(struct _tcb **current)
 
 int _schd_pend_context_switch(void)
 {
-	int ret = E_SUCC;
-
-	/*if ready queue is empty do not pend context switch*/
-	if( !m_list_is_empty(ready_task_queue) ){
-		NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
-	}
-	else{
-		ret = -E_FAIL;
-	}
-	return ret;
+	NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
+	return E_SUCC;
 }
 
 void _schd_schedule_task(void)
@@ -181,7 +172,6 @@ __attribute__((naked)) extern void PendSV_Handler(void)
 
 	);
 }
-
 
 struct _tcb *get_top_prio_task(void)
 {
@@ -239,6 +229,7 @@ int task_sleep(uint32_t ms)
 {
 	return m_svcall_task_sleep((void*)ms);
 }
+
 int _svc_task_sleep(uint32_t ms)
 {
 	struct _tcb *cur = current_running_task;
@@ -247,42 +238,6 @@ int _svc_task_sleep(uint32_t ms)
 	return E_SUCC;
 }
 
-/*
-void task_block(struct _list *wait)
-{
-	struct _tcb *cur = current_running_task;
-	cur->state = TASK_BLOCKED;
-	_list_insert_back(wait, &(cur->self));
-	_schd_pend_context_switch();
-}
-
-struct _tcb *task_unblock(struct _list *wait)
-{
-	struct _item *item = _list_remove_front(wait);
-	struct _tcb *task = NULL;
-
-	if(item){
-
-		struct _tcb *task = m_item_parent(struct _tcb*, item);
-		task->state = TASK_READY;
-		_list_insert_back(&ready_task_queue, &task->self);
-	}
-
-	return task;
-}
-
-int _svc_task_sleep(uint32_t ms)
-{
-	struct _tcb *cur = current_running_task;
-	cur->sleep_ticks = ms;
-	cur->state = TASK_BLOCKED;
-	_list_insert_back(&sleep_task_queue, &(cur->self));
-	_schd_pend_context_switch();
-
-	return E_SUCC;
-}
-*/
-
 int task_yield(void)
 {
 	return m_svcall_task_yield();
@@ -290,7 +245,13 @@ int task_yield(void)
 
 int _svc_task_yield(void)
 {
-	return _schd_pend_context_switch();
+	/*if ready queue is empty do not pend context switch*/
+	if( !m_list_is_empty(ready_task_queue) ){
+		return _schd_pend_context_switch();
+	}
+	else{
+		return E_FAIL;
+	}
 }
 
 
@@ -337,7 +298,11 @@ extern void SysTick_Handler(void)
 
 			/* if current task is the only task possible to run
 			 * renew it's timeslice */
-			if(_schd_pend_context_switch() == E_FAIL){
+			if( !m_list_is_empty(ready_task_queue) )
+			{
+				_schd_pend_context_switch();
+			}
+			else{
 				cur->timeslice_ticks = SCHED_RR_TIMESLICE;
 			}
 		}
