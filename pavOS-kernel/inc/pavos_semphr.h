@@ -9,6 +9,7 @@
 #define PAVOS_SEMPHR_H_
 
 #include "pavos_list.h"
+#include <stdbool.h>
 
 typedef struct _semphr{
 
@@ -54,7 +55,7 @@ void mutex_create(semphr_t *mtx);
  * - sem:    pointer to a semaphore object
  * - return: nothing
  * */
-int _svc_semphr_take(struct _semphr *sem);
+int _svc_semphr_take(struct _semphr *sem, bool try);
 /* 
  * Systemcall(svc) to take semaphore with blocking. 
  * If semaphore is not available, task requesting
@@ -65,16 +66,6 @@ int _svc_semphr_take(struct _semphr *sem);
  * - return: PAVOS_ERR_SUCC
  * */
 int semaphore_take(semphr_t *sem);
-
-
-/*
- * Kernel function to increment semaphore without blocking.
- *
- * - return:
- *   PAVOS_ERR_SUCC if taking semaphore succeeded
- *   PAVOS_ERR_FAIL if semaphore was not available
- * */
-int _svc_semphr_try_take(struct _semphr *sem);
 
 /* Systemcall to take semaphore without blocking.
  * If semaphore is not available function returns
@@ -108,14 +99,13 @@ int semaphore_give(semphr_t *sem);
  * - return nothing 
  * */
 int mutex_lock(semphr_t *mtx);
-int _svc_mutex_lock(struct _semphr *mtx);
+int _svc_mutex_lock(struct _semphr *mtx, bool try);
 
 /*
  * Nonblocking call to lock mutex.
  * If mutex is already locked function returns.
  * */
 int mutex_try_lock(semphr_t *mtx);
-int _svc_mutex_try_lock(struct _semphr *mtx);
 
 int _svc_mutex_unlock(struct _semphr *mtx);
 /*

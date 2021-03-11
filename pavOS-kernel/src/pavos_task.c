@@ -215,7 +215,7 @@ static struct _tcb *_schd_resume_task(struct _list *list)
 	 * */
 	if(item != NULL){
 
-		struct _tcb *tsk = m_item_parent(struct _tcb*, item);
+		tsk = m_item_parent(struct _tcb*, item);
 		tsk->state = TASK_READY;
 		_list_insert_back(&ready_task_queue, &tsk->self);
 	}
