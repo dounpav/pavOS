@@ -8,8 +8,10 @@
 #ifndef PAVOS_TASK_H_
 #define PAVOS_TASK_H_
 
-#include"pavos_config.h"
-#include"pavos_types.h"
+#include "pavos_list.h"
+#include "pavos_config.h"
+#include "pavos_types.h"
+
 
 typedef enum{
 
@@ -19,135 +21,92 @@ typedef enum{
 }task_state;
 
 /*Task control block structure for task*/
-typedef struct tcb{
+typedef struct _tcb{
 
-	uint32_t        *sp;				// stack pointer
-    uint32_t       *end;                // stack limit/end of the stack
-	task_state    state;				// task state
-	uint8_t		   prio;				// tasks priority
-	struct tcb    *next;				// points to next task
-}tcb;
-
-
-/*Task queue that holds tasks*/
-typedef struct{
-
-	uint8_t  	size;				// size of the queue
-	tcb 	   *head;				// head of the queue
-	tcb 	   *tail;				// tail of the queue
-}task_queue;
+	uint32_t	     *stack_ptr;
+	task_state		  state;
+	uint8_t			   prio;
+	uint32_t	timeslice_ticks;
+	uint32_t	    sleep_ticks;
+	struct _item		   self;
+}task_t;
 
 
 /*
- * @brief:            initializes stack for task
- * @param entry:      task entry address
- * @param stack:      task's stack
- * @param stack_size: size of the stack
- * @return            nothing
- * */
-// void task_stack_init(void *(entry)(void), uint32_t *stack, uint32_t stack_size);
-
-
-/*
- * @brief:  Creates a new task using static allocation
- *
- * Function initializes context and stack for the new task and adds it to
- * corresponding ready queue with same priority.
+ * Creates a new task using static allocation.
+ * Function initializes context and stack for the new task and adds it to a ready queue.
  * All parameters to this function should be provided by the user and should
- * be statically allocated
+ * be allocated at compile time
  *
- * @param tcb:          address of user allocated task's task control block (tcb)
- * @param stack:        a pointer to user allocated stack
- * @param stack_size:   a size of the user allocated stack
- * @param prior:        priority of the task
- *
- * @return:				nothing
+ * - tcb:          address of user allocated task's task control block (tcb)
+ * - stack:        a pointer to user allocated stack
+ * - stack_size:   a size of the user allocated stack
+ * - priorirty:	   a scheudling priority for the task
+ * - return:	   nothing
  * */
-void task_create(		void (*task_function)(void),
-						tcb *tcb,
-						uint32_t *stack,
-						uint32_t stack_size,
-						uint8_t priority);
+void task_create( void (*task_function)(void), task_t *task,
+		uint32_t *stack,
+		uint32_t stack_size,
+		uint8_t priority);
+
 
 
 /*
- * @brief:  Performs context switch
- *
- * Function performs context switch using two stack pointers.
- * Upon returning from this function stack pointer register will be
- * using restored stack pointer of restored task
- *
- * @param sp_st:	Stack pointer of a task whose context will be stored
- * @param sp_ld:	Stack pointer of a task whose context will be loaded
- * @return: 	    nothing
+ * Finds runnable task with top (highest runnable) priority
+ * - return: task with top priority
  * */
-__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld);
+struct _tcb *get_top_prio_task(void);
 
 
 /*
- * @brief: 	pushes task to a the back of task queue
- * @queue: task queue to which to push
- * @tcb: 	task to push
- * @return: nothing
+ * Starts the first task
+ * - current: task to start first
  * */
-void task_queue_push(task_queue *queue, tcb *tcb);
-
-/*
- * @brief: pops a task from the front of the task queue
- * @queue: task queue from which to pop
- * @return: popped task from queue
- * */
-tcb *task_queue_pop(task_queue *queue);
+__attribute__((naked)) void _schd_start_task(struct _tcb **current);
 
 
 /*
- * @brief:	finds runnable task with top (highest runnable) priority
- * @return:	task with top priority
+ * Pends a context switch
  * */
-tcb *get_top_prio_task(void);
+int _schd_pend_context_switch(void);
 
 
 /*
- * @brief:  Block currently running task
- *
- * Task blocks itself and pushes itself to specified wait queue
- *
- * @param queue: queue to which task will be added
- * @return:	     nothing
+ * Returns currently running task
  * */
-void task_block_self(task_queue *queue);
+struct _tcb *_schd_current_running_task(void);
 
 
 /*
- * @brief:  unblocks a task
- *
- * Function pops task from wait queue and pushes it to corresponding
- * ready queue with same priority
- *
- * @param queue:    queue from which task will be popped
- * @return:			a task that has been unblocked
+ * This function is wrapper that calls  _schd_suspend_task()
+ * funtion with 0 ticks.
  * */
-tcb *task_unblock_one(task_queue *queue);
+void _schd_block_task(struct _list *list);
+
+/*
+ * Wrapper for _shcd_resume_task()
+ * */
+struct _tcb *_schd_unblock_task(struct _list *list);
+
+
+int _svc_task_sleep(uint32_t ms);
+/*
+ * Suspends task for ms amount of milliseconds
+ * */
+int task_sleep(uint32_t ms);
+
+int _svc_task_yield();
+
+/*
+ * Yields currently running task and forces context switch
+ * - return: always returns 1 (success)
+ * */
+int task_yield(void);
 
 
 /*
- * @brief: yields currently running task and forces context switch
- * @return: nothing
- * */
-void task_yield(void);
-
-
-/*
- * @brief: 	idle task that runs when no other task is ready to run
- * @return: nothing
- * @note: 	this task should be always in ready queue
- * */
-void idle_task(void);
-
-
-/*
- * @brief: 	starts scheduler and chooses task to run first
- * @return: nothing
+ * Starts scheduler and chooses task to run first
+ * - return: nothing
  * */
 void scheduler_start(void);
 

@@ -5,224 +5,381 @@
  *      Author: pavel
  */
 
+#include"pavos_svcall.h"
 #include"pavos_task.h"
 
+/* NVIC Interrupt Control State Register */
+#define NVIC_INT_CTRL_ST_REG			(*((volatile uint32_t*) 0xE000ED04))
+/* Bit position to pend PendSV exception */
+#define NVIC_PENDSVSET_BIT			(1 << 28)
+/* Reset value for xPSR register */
+#define xPSR_RESET_VAL				(0x01000000)
+/* Link register reset value*/
+#define LR_RESET_VAL				(0xffffffff)
+/* NVIC lowest interrupt priority*/
+#define NVIC_PRIO_LOWEST			(255)
+
+#define SCHED_RR_TIMESLICE			(5)
+
+/* svcall helper functions */
+#define m_svcall_task_yield()			svcall(SVC_TASK_YIELD, NULL, NULL, NULL)
+#define m_svcall_task_sleep(ms)			svcall(SVC_TASK_SLEEP, ms, NULL, NULL)
 
 /*
- * @current_running_task
- *
+ * current_running_task
  * Pointer that holds address of currently executing/running task.
  * Pointer should always point to a valid task control block
- * */
-static tcb *current_running_task = NULL;
-
-/*
- * @ready_queues
- *
- * Ready queues. Ready queues are used to hold tasks that are ready to run.
- * Scheduler picks next task to run only from these queues.
- * Each queue is defined with its own unique priority, thus there cannot be two
- * ready queues with same priority.
- * Each queue should only contain tasks with same priority.
- * Number of queues is determined always at compile time by TASK_PRIORITY_CNT macro
- *
- * Ready queue with priority 0 is used for idle task, but nothing
- * restricts user to add any other task to that priority.
- * */
-static task_queue ready_queues[TASK_PRIORITY_CNT];
+ */
+static struct _tcb *current_running_task = NULL;
 
 
 /*
- * @runnable_queue_prio_bmap
+ * ready_task_queue
+ * Holds tasks that are ready to be scheduled.
+ * Scheduler pick next task to run only from this queue
+ */
+
+static struct _list ready_task_queue[TASK_PRIORITY_CNT];
+
+/*
+ * Ready queue priority bitmap that tells which of the raeady queues are
+ * ready to run. Each bit corresponds to a one task priority.
  *
- * Bitmap variable that tells which of the ready queues are ready to run
- * Each bit corresponds to a one queue priority that is ready to run
- * When nth bit is set, then queue with nth priority is ready to run
- * Queue is ready to run when it contains tasks that are in ready state
+ * When nth bit is set, then queue with nth priority is ready to run, which
+ * means that ready queue contains at least one task ready to run.
  *
  * Bitmap will be equal to 2^PRIORITY_CNT-1 when all queues are ready to run
- * Bitmap will be equal to zero if no queues are ready to run
- *
- * @note:
- * Bitmap will be always greater than zero, because idle task will be always scheduled to run
- * as default.
- * */
-static uint8_t runnable_queue_prio_bmap = 0;
+ * Bitmap will be equal to zero if no queues are ready to run, the current
+ * running task is the only task that can be ran at that time.
+ */
+static uint8_t rq_prio_bmap = 0;
+
+#define m_set_runnable_prio(prio)	rq_prio_bmap = rq_prio_bmap | (1 << prio)
+#define m_unset_runnable_prio(prio)	rq_prio_bmap = rq_prio_bmap ^ (1 << prio)
+#define m_top_runnable_prio		msb_uint32(rq_prio_bmap)
 
 
-/*helper functions*/
-#define ready_queue_push(prio, tcb)				task_queue_push( &(ready_queues[prio]), tcb)
-#define ready_queue_pop(prio)					task_queue_pop( &(ready_queues[prio]) )
-#define set_runnable_prio(prio)					runnable_queue_prio_bmap = runnable_queue_prio_bmap | (1 << prio)
-#define unset_runnable_prio(prio)				runnable_queue_prio_bmap = runnable_queue_prio_bmap ^ (1 << prio)
-#define get_highest_runnable_prio				find_msb(runnable_queue_prio_bmap)
+/*
+ * sleep task queue
+ * Holds tcb's of tasks that are currently sleeping
+ */
+static struct _list sleep_task_queue = m_list_initial_content;
+
+static struct _tcb idle_tcb;			// task control block for the idle task
+static uint32_t idle_stack[STACK_SIZE_MIN];	// stack for idle task
 
 
-static tcb idle_tcb;								// task control block for the idle task
-static uint32_t idle_stack[STACK_SIZE_MIN];			// stack for idle task
-static uint32_t *sp_kernel;
-
-
-
-/*void task_stack_init(void *(entry)(void), tcb *tcb, uint32_t *stack, uint32_t stack_size){
-
-    uint32_t *temp = &stack[ stack_size - (uint32_t)1];
-    temp = (uint32_t) entry;
-    temp -= 8;
-    tcb->sp = temp;
-
-    tcb->end = &stack[4];
-    stack[0] = 0xfeedbeef;
-    stack[1] = 0xfeedbeef;
-    stack[2] = 0xfeedbeef;
-    stack[3] = 0xfeedbeef;
-}
-*/
-
-void task_create(void (*task_function)(void),
-				tcb *tcb,
-				uint32_t *stack,
-				uint32_t stack_size,
-				uint8_t priority)
+__attribute__ ((naked)) uint32_t msb_uint32(uint32_t value)
 {
-	/* create stack frame as it would be created by context switch*/
-
-	tcb->sp = &stack[ stack_size - (uint32_t)1 ];		// stack start address
-	*(tcb->sp) = (uint32_t) task_function;				// LR
-	(tcb->sp) -= 8;										// R11, R10, R8, R7, R6, R5, R4
-
-	tcb->prio = priority;
-	tcb->state = TASK_READY;
-
-	// push newly created task to ready queue
-	ready_queue_push(priority, tcb);
-
-	// set ready queue with priority as runnable
-	set_runnable_prio(priority);
-}
-
-__attribute__((naked))void task_context_switch(uint32_t **sp_st, uint32_t **sp_ld){
-
 	__asm__ __volatile__(
 
-			"	push {r4-r11, lr}			\n"			// save context
-			"	str sp, [r0]				\n"         // store old stack pointer
-			"	ldr	sp, [r1]				\n"			// context switch
-			"	pop {r4-r11, lr}			\n"			// restore context
-			"	bx lr						\n"
+		"	clz r1, r0				\n"
+		"	mov r2, #31				\n"
+		"	sub r2, r1				\n"
+		"	mov r0, r2				\n"
+		"	bx lr					\n"
 	);
 }
 
-void task_queue_push(task_queue *queue, tcb *tcb){
 
-	if(queue->size == 0){
-
-		queue->tail = tcb;
-		queue->head = tcb;
-	}
-	else{
-
-		struct tcb *old_tail = queue->tail;
-		old_tail->next = tcb;
-		queue->tail = tcb;
-		old_tail = NULL;
-	}
-	queue->size++;
+static void _schd_insert_ready_queue(struct _tcb *tsk)
+{
+	_list_insert_back( &ready_task_queue[tsk->prio], &tsk->self);
+	m_set_runnable_prio( tsk->prio );
 }
 
-tcb *task_queue_pop(task_queue *queue){
+static struct _tcb *_schd_remove_ready_queue(uint8_t prio)
+{
+	struct _item *item = _list_remove_front(&ready_task_queue[prio]);
+	struct _tcb *tsk = m_item_parent(struct _tcb*, item);
 
-	struct tcb *old_head = queue->head;
-	tcb *new_head = old_head->next;
-	old_head->next = NULL;
-	queue->head = new_head;
-
-	if(new_head == NULL){
-		queue->tail = NULL;
+	if( m_list_is_empty(ready_task_queue[prio]) )
+	{
+		m_unset_runnable_prio(prio);
 	}
 
-	queue->size--;
-
-	return old_head;
+	return tsk;
 }
 
-tcb *get_top_prio_task(void){
+static struct _tcb *_schd_top_prio_task()
+{
+	uint8_t prio = m_top_runnable_prio;
+	return _schd_remove_ready_queue(prio);
+}
 
-	uint8_t prio = get_highest_runnable_prio;
-	tcb *top_task = ready_queue_pop(prio);
 
-	if(ready_queues[prio].size == 0){
-		unset_runnable_prio(prio);
+void task_create(void (*task_function)(void), task_t *task,
+		uint32_t *stack,
+		uint32_t stack_size,
+		uint8_t priority)
+{
+	struct _tcb *tcb = (struct _tcb *)task;
+	/* create stack frame as it would be created by context switch */
+
+	/* locate stack start address */
+	tcb->stack_ptr = &stack[ stack_size - (uint32_t)1 ];
+	/* Leave a space to avoid possible memory corruption when returning
+	 * from exception */
+	tcb->stack_ptr--;
+	*(tcb->stack_ptr) = xPSR_RESET_VAL;		// xPSR
+	tcb->stack_ptr--;
+	*(tcb->stack_ptr) = (uint32_t) task_function;	// PC
+	tcb->stack_ptr--;
+	*(tcb->stack_ptr) = LR_RESET_VAL;               // LR
+	(tcb->stack_ptr) -= 13;	 // r12, r4, r3, r2, r1, r0, r11, r10, r9, r8, r7, r6, r5
+
+	/* set task to ready state */
+	tcb->state = TASK_READY;
+	tcb->timeslice_ticks = SCHED_RR_TIMESLICE;
+	tcb->sleep_ticks = 0;
+	tcb->prio = priority;
+
+	/* initalize tcb as an item of list */
+	m_item_init(tcb->self, tcb);
+	/* insert created task to ready queue */
+	_schd_insert_ready_queue(tcb);
+}
+
+__attribute__((naked)) static void _init_kernel_stack(void)
+{
+	__asm__ __volatile__(
+
+		" ldr   r0, =0xe000ed08	\n" /* locating the offset of vector table */
+		" ldr   r0, [r0]	\n"
+		" ldr   r0, [r0]	\n" /* locate the kernel stack */
+		" msr   msp, r0		\n" /* now main stack pointer points to a kernel stack  */
+		" dsb			\n" /* required to use after msr instruction with stack pointer*/
+		" isb			\n" /* required to use after msr instruction with stack pointer*/
+		" cpsie i               \n" /* enable interrupts */
+		" svc #0                \n" /* start first task by restoring a context */
+	);
+}
+
+__attribute__((naked)) void _schd_start_task(struct _tcb **current)
+{
+	__asm__ __volatile__(
+
+		" cpsid i		\n" /* disable interrupts*/
+		" ldr r0, [r0]  	\n"
+		" ldr r0, [r0]		\n" /* first entry in tcb is the stack pointer*/
+		" ldmia r0!, {r4-r11}	\n" /* restore context */
+		" msr psp, r0		\n" /* update process stack pointer*/
+		" dsb			\n"
+		" isb                   \n"
+		" mov lr, 0xfffffffd	\n" /* modify exc_return value to return using process stack pointer*/
+		" cpsie i               \n" /* enable interrupts*/
+		" bx lr			\n"
+	);
+}
+
+int _schd_pend_context_switch(void)
+{
+	NVIC_INT_CTRL_ST_REG |= NVIC_PENDSVSET_BIT;
+	return E_SUCC;
+}
+
+void _schd_schedule_task(void)
+{
+	struct _tcb *cur = current_running_task;
+
+	if(cur->state != TASK_BLOCKED){
+
+		/* assign task with new time slice if task's time slice
+		 * expired last time
+		 * */
+		if(cur->timeslice_ticks == 0){
+			cur->timeslice_ticks = SCHED_RR_TIMESLICE;
+		}
+		_schd_insert_ready_queue(cur);
 	}
-
-	return top_task;
+	struct _tcb *next = _schd_top_prio_task();
+	next->state = TASK_RUNNING;
+	current_running_task = next;
 }
 
+__attribute__((naked)) extern void PendSV_Handler(void)
+{
+	__asm__ __volatile__(
 
-void task_block_self(task_queue *wait){
+		" cpsid i                       \n"  /* disable interrupts*/
+		" mrs r0, psp                   \n"
+		" dsb                           \n"
+		" isb                           \n"
+		" ldr r1, =current_running_task \n"
+		"                               \n"
+		" ldr r2, [r1]                  \n"
+		" stmdb r0!, {r4-r11}           \n"  /* push registers r4-r11 to stack*/
+		" str r0, [r2]                  \n"  /* save context into current tcb*/
+		"                               \n"
+		" push {lr, r1}                 \n"
+		" bl _schd_schedule_task        \n"  /* contex switch*/
+		" pop  {lr, r1}                 \n"
+		"                               \n"
+		" ldr r2, [r1]                  \n"
+		" ldr r2, [r2]                  \n"  /* load new context*/
+		" ldmia r2!, {r4-r11}           \n"  /* pop registers from new stack*/
+		"                               \n"
+		" msr psp, r2                   \n"  /* update process stack pointer */
+		" dsb                           \n"
+		" isb                           \n"
+		" cpsie i                       \n"
+		" bx lr                         \n"
 
-	tcb *current_task = current_running_task;
-	current_task->state = TASK_BLOCKED;
-
-	task_queue_push(wait, current_task);
-
-	task_yield();
+	);
 }
 
-tcb *task_unblock_one(task_queue *wait){
-
-	tcb *task = task_queue_pop(wait);
-	task->state = TASK_READY;
-
-	ready_queue_push(task->prio, task);
-	set_runnable_prio(task->prio);
-
-	return task;
+struct _tcb *_schd_current_running_task(void)
+{
+	return current_running_task;
 }
 
-void task_yield(void){
+static void _schd_suspend_task(struct _tcb *tsk, struct _list *list, uint32_t ticks)
+{
+	if(ticks > 0){
+		tsk->sleep_ticks = ticks;
+	}
+	tsk->state = TASK_BLOCKED;
+	_list_insert_back(list, &(tsk->self));
+	_schd_pend_context_switch();
+}
 
-	// if current task is the only one running dont yield
-	if(runnable_queue_prio_bmap == 0) return;
+static struct _tcb *_schd_resume_task(struct _list *list)
+{
+	struct _item *item = _list_remove_front(list);
+	struct _tcb *tsk = NULL;
 
 	/*
-	 * if current task has higher priority than highest runnable priority
-	 * dont yield the task
+	 * Usually when removing task from queue, we should expect
+	 * task to be valid
 	 * */
-	if(current_running_task->state == TASK_RUNNING){
+	if(item != NULL){
 
-		if(current_running_task->prio <= get_highest_runnable_prio){
-			current_running_task->state = TASK_READY;
-			ready_queue_push(current_running_task->prio, current_running_task);
-		}
-		else return;
+		tsk = m_item_parent(struct _tcb*, item);
+		tsk->state = TASK_READY;
+		_schd_insert_ready_queue(tsk);
 	}
 
-	// schedule new task to run
-	tcb *old_task = current_running_task;
-	tcb *new_task = get_top_prio_task();
-	new_task->state = TASK_RUNNING;
-	current_running_task = new_task;
-
-	task_context_switch( &(old_task->sp), &(new_task->sp) );
+	return tsk;
 }
 
 
-void idle_task(void){
-
-	while(1) task_yield();
+void _schd_block_task(struct _list *list)
+{
+	struct _tcb *tsk = current_running_task;
+	return _schd_suspend_task(tsk, list, 0);
 }
 
-void scheduler_start(void){
+struct _tcb *_schd_unblock_task(struct _list *list)
+{
+	return _schd_resume_task(list);
+}
+
+int task_sleep(uint32_t ms)
+{
+	return m_svcall_task_sleep((void*)ms);
+}
+
+int _svc_task_sleep(uint32_t ms)
+{
+	struct _tcb *cur = current_running_task;
+	_schd_suspend_task(cur, &sleep_task_queue, ms);
+
+	return E_SUCC;
+}
+
+int task_yield(void)
+{
+	return m_svcall_task_yield();
+}
+
+int _svc_task_yield(void)
+{
+	/* if there are no runnable ready queues do not 
+	 * pend context switch
+	 * */
+	if( rq_prio_bmap != 0 ){
+		return _schd_pend_context_switch();
+	}
+	else{
+		return E_FAIL;
+	}
+}
+
+
+static void idle_task(void)
+{
+	while(1){
+		task_yield();
+	}
+}
+
+void scheduler_start(void)
+{
+	INTERRUPTS_DISABLE();
 
 	// create the idle task
 	task_create(idle_task, &idle_tcb, idle_stack, STACK_SIZE_MIN, TASK_PRIORITY_IDLE);
+	idle_tcb.timeslice_ticks = 1;
 
 	// first task to run
-	current_running_task = get_top_prio_task();
+	current_running_task = _schd_top_prio_task();
 
-	// start first task by switching context with kernel
-	task_context_switch( &sp_kernel, &(current_running_task->sp) );
+	// Initalize systick
+	SysTick_Config(CPU_CLOCK_RATE_HZ/1000);
+
+	// Initialize interrupt priorities
+	NVIC_SetPriority(SysTick_IRQn, NVIC_PRIO_LOWEST);
+	NVIC_SetPriority(PendSV_IRQn, NVIC_PRIO_LOWEST);
+	NVIC_SetPriority(SVCall_IRQn, NVIC_PRIO_LOWEST);
+
+	/*start first task by initalizing the kernel stack*/
+	_init_kernel_stack();
 }
+
+extern void SysTick_Handler(void)
+{
+	INTERRUPTS_DISABLE();
+	{
+		/*
+		 * Round Robin Scheduling:
+		 * if task's time slice is drained to zero pend context switch
+		 * */
+		struct _tcb *cur = current_running_task;
+		if( (--cur->timeslice_ticks) == 0 ){
+
+			/* if current task is the only task possible to run
+			 * renew it's timeslice */
+			if( rq_prio_bmap != 0 )
+			{
+				_schd_pend_context_switch();
+			}
+			else{
+				cur->timeslice_ticks = SCHED_RR_TIMESLICE;
+			}
+		}
+
+		struct _item *cur_item = sleep_task_queue.head;
+		struct _tcb *cur_tcb;
+
+		while(cur_item != NULL){
+
+			cur_tcb = m_item_parent(struct _tcb*, cur_item);
+			if(--cur_tcb->sleep_ticks == 0){
+
+				struct _item *item = _list_remove(&sleep_task_queue, cur_item);
+				struct _tcb *ready_task = m_item_parent(struct _tcb*, item);
+
+				_schd_insert_ready_queue(ready_task);
+			}
+			cur_item = cur_item->next;
+		}
+	}
+	INTERRUPTS_ENABLE();
+
+}
+
+
+
+
 
 
