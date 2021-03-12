@@ -100,14 +100,26 @@ int _svc_mutex_lock(struct _semphr *mtx, bool try)
 {
 	int ret = E_SUCC;
 	struct _tcb *cur = _schd_current_running_task();
+	struct _tcb *holder = mtx->holder;
 
-	if(mtx->holder == cur){
+	if(holder == cur){
 		return E_SUCC;
 	}
 
 	if(mtx->count != 1){
 
-		ret = -E_FAIL;
+		ret = E_FAIL;
+
+		/* Prevent unbounded priority inversion:
+		 * If holder of the mutex has lower priority
+		 * than current runnning task, increase
+		 * holder task's priority to the same as the
+		 * currently running task*/
+		if(holder->prio < cur->prio){
+			holder->sv_prio = holder->prio;
+			holder->prio = cur->prio;
+		}
+
 		if(!try)
 		{
 			_schd_block_task( &(mtx->wait_queue) );
@@ -143,6 +155,14 @@ int _svc_mutex_unlock(struct _semphr *mtx)
 		/* unblock any task from waiting queue*/
 		if( !m_list_is_empty(mtx->wait_queue) )
 		{
+			/* if task's priority was changed due
+			 * to priority inversion, change the task's priority to
+			 * saved original prioity.
+			 * */
+			if(cur->prio != cur->sv_prio)
+			{
+				cur->prio = cur->sv_prio;
+			}
 			tsk = _schd_unblock_task( &(mtx->wait_queue) );
 			mtx->holder = tsk;
 		}

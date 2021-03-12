@@ -133,6 +133,7 @@ void task_create(void (*task_function)(void), task_t *task,
 	tcb->timeslice_ticks = SCHED_RR_TIMESLICE;
 	tcb->sleep_ticks = 0;
 	tcb->prio = priority;
+	tcb->sv_prio = priority;
 
 	/* initalize tcb as an item of list */
 	m_item_init(tcb->self, tcb);
