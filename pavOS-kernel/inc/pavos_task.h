@@ -41,6 +41,7 @@ typedef struct _tcb{
  * - tcb:          address of user allocated task's task control block (tcb)
  * - stack:        a pointer to user allocated stack
  * - stack_size:   a size of the user allocated stack
+ * - priorirty:	   a scheudling priority for the task
  * - return:	   nothing
  * */
 void task_create( void (*task_function)(void), task_t *task,
@@ -75,30 +76,6 @@ int _schd_pend_context_switch(void);
  * */
 struct _tcb *_schd_current_running_task(void);
 
-/*
- * Block currently running task.
- * Task blocks itself and pushes itself to specified wait queue
- *
- * - queue:  queue to which task will be added
- * - return: nothing
- * */
-//void task_block(struct _list *queue);
-
-
-/*
- * Suspends task from execution
- * - tsk:	task to be suspended
- * - from:	list to which suspended taks will be added
- * - ticks:	amount of ticks task will be suspended
- * - return:	suspended task
- * */
-//void _schd_suspend_task(struct _list *list, uint8_t ticks);
-
-/*
- * Resumes previously suspended task for execution
- * - from:	from which queue suspened task will be resumed
- * */
-//struct _tcb *_schd_resume_task(struct _list *list);
 
 /*
  * This function is wrapper that calls  _schd_suspend_task()
@@ -110,16 +87,6 @@ void _schd_block_task(struct _list *list);
  * Wrapper for _shcd_resume_task()
  * */
 struct _tcb *_schd_unblock_task(struct _list *list);
-
-
-/*
- * Unblocks a task
- * Function removes task from wait queue and pushes it to the ready queue
- *
- * - queue:             queue from which task will be popped
- * - return:			a task that has been unblocked
- * */
-//struct _tcb *task_unblock(struct _list *queue);
 
 
 int _svc_task_sleep(uint32_t ms);
