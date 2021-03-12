@@ -19,100 +19,94 @@ typedef struct _semphr{
 	struct _tcb	      *holder;	 // current holder of the mutex lock
 }semphr_t;
 
+
 /*
  * Initializes counting semaphore
- * - sem:    pointer to semaphore
- * - init:   inital count value for semaphore
- * - limit:  limit for semaphore count value
- * - return: nothing
+ *	- sem:		pointer to semaphore
+ *	- init:		inital count value for semaphore
+ *	- limit:	limit for semaphore count value
+ *	- return:	nothing
  * */
 void semaphore_create_cnt(semphr_t *sem, uint32_t init, uint32_t limit);
 
 
 /*
  * Initializes binary semaphore
- * - sem:    pointer to semaphore
- * - init:   inital value
- * - return: nothing
+ *	- sem:		pointer to semaphore
+ *	- init:		inital value
+ *	- return:	nothing
  * */
 void semaphore_create_bin(semphr_t *sem, uint32_t init);
 
 
 /*
  * Initalizes mutex
- * - mtx:	 pointer to a mutex structure
- * - return: nothing
- *
+ *	- mtx:		pointer to a mutex structure
+ *	- return:	nothing
  * */
 void mutex_create(semphr_t *mtx);
 
 
 /* 
- * Kernel function to decrement semaphore. 
- * If semaphore is not available suspend requesting task.
- * Must be used and called only by the kernel.
- *
- * - sem:    pointer to a semaphore object
- * - return: nothing
- * */
-int _svc_semphr_take(struct _semphr *sem, bool try);
-/* 
- * Systemcall(svc) to take semaphore with blocking. 
- * If semaphore is not available, task requesting
- * the semaphore will be suspended and resumed
- * when semaphore becomes available again.
- * 
- * - sem:    pointer to a semaphore object
- * - return: PAVOS_ERR_SUCC
+ * Blocking system call to take/decrement semaphore
+ *	- sem:		pointer to a semaphore structure
+ *	- return:	E_SUCC
  * */
 int semaphore_take(semphr_t *sem);
 
-/* Systemcall to take semaphore without blocking.
- * If semaphore is not available function returns
- * and task will be not suspended.
- * - return: 
- *   PAVOS_ERR_SUCC if taking semaphore succeeded
- *   PAVOS_ERR_FAIL if semaphore was not available
+
+/* Non-blocking system call to take/decrement semaphore
+ *	- sem:		pointer to a semaphore structure
+ *	- return:	E_SUCC if operation succeeded
+ *			E_FAIL if operation failed
  * */
 int semaphore_try_take(semphr_t *sem);
 
 
 /*
- * Increment semaphore inside kernel.
- * - sem: pointer to a semaphore object
- * */
-int _svc_semphr_give(struct _semphr *sem);
-/*
- * Gives the semaphore (system call)
- * - sem:    pointer to a semaphore
- * - return: 
- *           PAVOS_ERR_SUCC if giving semaphore was successfull
- *           PAVOS_ERR_FAIL if no task was waiting for semaphore
+ * System call to increment/give semapgore
+ *	- sem:		pointer to a semaphore structure
+ *	- return:	E_SUCC operation succeeded
+ *			E_FAIL if no task was waiting for the given
+ *			semaphore
  * */
 int semaphore_give(semphr_t *sem);
 
 
 /*
- * Locks mutex. If lock is not available the task
+ * Blocking system call to lock a mutex. If lock is not available the task
  * trying to take the lock is suspended until the lock is available
- * - mtx:   pointer to a mutex semaphore
- * - return nothing 
+ *	- mtx:		pointer to a mutex semaphore
+ *	- return:	E_SUCC
  * */
 int mutex_lock(semphr_t *mtx);
-int _svc_mutex_lock(struct _semphr *mtx, bool try);
+
 
 /*
- * Nonblocking call to lock mutex.
- * If mutex is already locked function returns.
+ * Nonblocking system call to lock mutex. If mutex is locked by some other task
+ * the function immediately return without suspneding the calling task.
+ *	- mtx:		pointer to a mutex semaphore structure
+ *	- return:	E_SUCC if mutex was locked
+ *			E_FAIL if mutex is locked by other
  * */
 int mutex_try_lock(semphr_t *mtx);
 
-int _svc_mutex_unlock(struct _semphr *mtx);
+
 /*
- * Releases the mutex lock.
- * - mtx: pointer to a mutex to lock
+ * Release the mutex lock.
+ *	- mtx:		pointer to a mutex to lock
+ *	- return:	E_SUCC lock was released
+ *			E_FAIL releasing the lock failed because task is not
+ *			owner of the lock
  * */
 int mutex_unlock(semphr_t *mtx);
+
+
+int _svc_semphr_take(struct _semphr *sem, bool try);
+int _svc_semphr_give(struct _semphr *sem);
+int _svc_mutex_lock(struct _semphr *mtx, bool try);
+int _svc_mutex_unlock(struct _semphr *mtx);
+
 
 
 
