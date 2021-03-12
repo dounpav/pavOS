@@ -38,7 +38,26 @@ static struct _tcb *current_running_task = NULL;
  * Holds tasks that are ready to be scheduled.
  * Scheduler pick next task to run only from this queue
  */
-static struct _list ready_task_queue = m_list_initial_content;
+
+static struct _list ready_task_queue[TASK_PRIORITY_CNT];
+
+/*
+ * Ready queue priority bitmap that tells which of the raeady queues are
+ * ready to run. Each bit corresponds to a one task priority.
+ *
+ * When nth bit is set, then queue with nth priority is ready to run, which
+ * means that ready queue contains at least one task ready to run.
+ *
+ * Bitmap will be equal to 2^PRIORITY_CNT-1 when all queues are ready to run
+ * Bitmap will be equal to zero if no queues are ready to run, the current
+ * running task is the only task that can be ran at that time.
+ */
+static uint8_t rq_prio_bmap = 0;
+
+#define m_set_runnable_prio(prio)	rq_prio_bmap = rq_prio_bmap | (1 << prio)
+#define m_unset_runnable_prio(prio)	rq_prio_bmap = rq_prio_bmap ^ (1 << prio)
+#define m_top_runnable_prio		msb_uint32(rq_prio_bmap)
+
 
 /*
  * sleep task queue
@@ -46,9 +65,47 @@ static struct _list ready_task_queue = m_list_initial_content;
  */
 static struct _list sleep_task_queue = m_list_initial_content;
 
-
 static struct _tcb idle_tcb;			// task control block for the idle task
 static uint32_t idle_stack[STACK_SIZE_MIN];	// stack for idle task
+
+
+__attribute__ ((naked)) uint32_t msb_uint32(uint32_t value)
+{
+	__asm__ __volatile__(
+
+		"	clz r1, r0				\n"
+		"	mov r2, #31				\n"
+		"	sub r2, r1				\n"
+		"	mov r0, r2				\n"
+		"	bx lr					\n"
+	);
+}
+
+
+static void _schd_insert_ready_queue(struct _tcb *tsk)
+{
+	_list_insert_back( &ready_task_queue[tsk->prio], &tsk->self);
+	m_set_runnable_prio( tsk->prio );
+}
+
+static struct _tcb *_schd_remove_ready_queue(uint8_t prio)
+{
+	struct _item *item = _list_remove_front(&ready_task_queue[prio]);
+	struct _tcb *tsk = m_item_parent(struct _tcb*, item);
+
+	if( m_list_is_empty(ready_task_queue[prio]) )
+	{
+		m_unset_runnable_prio(prio);
+	}
+
+	return tsk;
+}
+
+static struct _tcb *_schd_top_prio_task()
+{
+	uint8_t prio = m_top_runnable_prio;
+	return _schd_remove_ready_queue(prio);
+}
 
 
 void task_create(void (*task_function)(void), task_t *task,
@@ -75,13 +132,12 @@ void task_create(void (*task_function)(void), task_t *task,
 	tcb->state = TASK_READY;
 	tcb->timeslice_ticks = SCHED_RR_TIMESLICE;
 	tcb->sleep_ticks = 0;
+	tcb->prio = priority;
 
 	/* initalize tcb as an item of list */
 	m_item_init(tcb->self, tcb);
-	/* push created task to ready queue */
-	struct _item *item = &(tcb->self);
-	_list_insert_back(&ready_task_queue, item);
-
+	/* insert created task to ready queue */
+	_schd_insert_ready_queue(tcb);
 }
 
 __attribute__((naked)) static void _init_kernel_stack(void)
@@ -125,8 +181,6 @@ int _schd_pend_context_switch(void)
 void _schd_schedule_task(void)
 {
 	struct _tcb *cur = current_running_task;
-	struct _item *item = _list_remove_front(&ready_task_queue);
-	struct _tcb *next = m_item_parent(struct _tcb*, item);
 
 	if(cur->state != TASK_BLOCKED){
 
@@ -136,8 +190,9 @@ void _schd_schedule_task(void)
 		if(cur->timeslice_ticks == 0){
 			cur->timeslice_ticks = SCHED_RR_TIMESLICE;
 		}
-		_list_insert_back(&ready_task_queue, &cur->self);
+		_schd_insert_ready_queue(cur);
 	}
+	struct _tcb *next = _schd_top_prio_task();
 	next->state = TASK_RUNNING;
 	current_running_task = next;
 }
@@ -173,12 +228,6 @@ __attribute__((naked)) extern void PendSV_Handler(void)
 	);
 }
 
-struct _tcb *get_top_prio_task(void)
-{
-	struct _item *item = _list_remove_front(&ready_task_queue);
-	return m_item_parent(struct _tcb*, item);
-}
-
 struct _tcb *_schd_current_running_task(void)
 {
 	return current_running_task;
@@ -207,7 +256,7 @@ static struct _tcb *_schd_resume_task(struct _list *list)
 
 		tsk = m_item_parent(struct _tcb*, item);
 		tsk->state = TASK_READY;
-		_list_insert_back(&ready_task_queue, &tsk->self);
+		_schd_insert_ready_queue(tsk);
 	}
 
 	return tsk;
@@ -245,8 +294,10 @@ int task_yield(void)
 
 int _svc_task_yield(void)
 {
-	/*if ready queue is empty do not pend context switch*/
-	if( !m_list_is_empty(ready_task_queue) ){
+	/* if there are no runnable ready queues do not 
+	 * pend context switch
+	 * */
+	if( rq_prio_bmap != 0 ){
 		return _schd_pend_context_switch();
 	}
 	else{
@@ -271,7 +322,7 @@ void scheduler_start(void)
 	idle_tcb.timeslice_ticks = 1;
 
 	// first task to run
-	current_running_task = get_top_prio_task();
+	current_running_task = _schd_top_prio_task();
 
 	// Initalize systick
 	SysTick_Config(CPU_CLOCK_RATE_HZ/1000);
@@ -298,7 +349,7 @@ extern void SysTick_Handler(void)
 
 			/* if current task is the only task possible to run
 			 * renew it's timeslice */
-			if( !m_list_is_empty(ready_task_queue) )
+			if( rq_prio_bmap != 0 )
 			{
 				_schd_pend_context_switch();
 			}
@@ -317,7 +368,8 @@ extern void SysTick_Handler(void)
 
 				struct _item *item = _list_remove(&sleep_task_queue, cur_item);
 				struct _tcb *ready_task = m_item_parent(struct _tcb*, item);
-				_list_insert_back(&ready_task_queue, &ready_task->self);
+
+				_schd_insert_ready_queue(ready_task);
 			}
 			cur_item = cur_item->next;
 		}

@@ -25,6 +25,7 @@ typedef struct _tcb{
 
 	uint32_t	     *stack_ptr;
 	task_state		  state;
+	uint8_t			   prio;
 	uint32_t	timeslice_ticks;
 	uint32_t	    sleep_ticks;
 	struct _item		   self;
