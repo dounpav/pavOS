@@ -52,14 +52,6 @@ void task_create( void (*task_function)(void), task_t *task,
 		uint8_t priority);
 
 
-
-/*
- * Finds runnable task with top (highest runnable) priority
- * - return: task with top priority
- * */
-struct _tcb *get_top_prio_task(void);
-
-
 /*
  * Starts the first task
  * - current: task to start first
