@@ -1,5 +1,5 @@
 /*
- * pavos_types.h
+ * pavos_arch.h
  *
  *  Created on: Sep 5, 2019
  *      Author: pavel
@@ -18,9 +18,5 @@
 
 #define m_arch_intr_disable()		__disable_irq()
 #define m_arch_intr_enable()		__enable_irq()
-
-#define E_SUCC						0
-#define E_FAIL						1
-
 
 #endif /* PAVOS_TYPES_H_ */

@@ -10,6 +10,9 @@
 
 #include<stdint.h>
 
+#define E_SUCC		0
+#define E_FAIL		1
+
 #define SVC_SCHED_START 0
 #define SVC_TASK_YIELD  1
 #define SVC_TASK_SLEEP  2
