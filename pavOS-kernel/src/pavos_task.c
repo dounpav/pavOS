@@ -134,6 +134,7 @@ void task_create(void (*task_function)(void), task_t *task,
 	tcb->sleep_ticks = 0;
 	tcb->prio = priority;
 	tcb->sv_prio = priority;
+	tcb->msg_ptr = NULL;
 
 	/* initalize tcb as an item of list */
 	m_item_init(tcb->self, tcb);

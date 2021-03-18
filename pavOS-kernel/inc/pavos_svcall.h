@@ -19,6 +19,10 @@
 #define SVC_MTX_LOCK    6
 #define SVC_MTX_TLOCK   7
 #define SVC_MTX_UNLOCK  8
+#define SVC_MBOX_SEND	9
+#define SVC_MBOX_TSEND	10
+#define SVC_MBOX_RECV	11
+#define SVC_MBOX_TRECV	12
 
 
 __attribute__((naked)) uint32_t svcall(uint8_t n, void *p1, void *p2, void *p3);
