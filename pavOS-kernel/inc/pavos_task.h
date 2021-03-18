@@ -10,7 +10,7 @@
 
 #include "pavos_list.h"
 #include "pavos_config.h"
-#include "pavos_types.h"
+#include "pavos_arch.h"
 
 
 typedef enum{
