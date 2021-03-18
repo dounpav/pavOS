@@ -317,7 +317,7 @@ static void idle_task(void)
 
 void scheduler_start(void)
 {
-	INTERRUPTS_DISABLE();
+	m_arch_intr_disable();
 
 	// create the idle task
 	task_create(idle_task, &idle_tcb, idle_stack, STACK_SIZE_MIN, TASK_PRIORITY_IDLE);
@@ -340,7 +340,7 @@ void scheduler_start(void)
 
 extern void SysTick_Handler(void)
 {
-	INTERRUPTS_DISABLE();
+	m_arch_intr_disable();
 	{
 		/*
 		 * Round Robin Scheduling:
@@ -376,7 +376,7 @@ extern void SysTick_Handler(void)
 			cur_item = cur_item->next;
 		}
 	}
-	INTERRUPTS_ENABLE();
+	m_arch_intr_enable();
 
 }
 

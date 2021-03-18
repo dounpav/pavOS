@@ -16,11 +16,8 @@
 #include<stdint.h>
 #include<assert.h>
 
-#define INTERRUPTS_DISABLE()		__disable_irq()
-#define INTERRUPTS_ENABLE()		__enable_irq()
-
 #define m_arch_intr_disable()		__disable_irq()
-#define n_arch_intr_enable()		__enable_irq()
+#define m_arch_intr_enable()		__enable_irq()
 
 #define E_SUCC						0
 #define E_FAIL						1

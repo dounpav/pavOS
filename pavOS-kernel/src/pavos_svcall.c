@@ -81,9 +81,8 @@ extern void C_SVC_Handler(uint32_t *svc_args)
 	/* modify r0 in stack frame for return value */
 	svc_args[0] = ret;
 
-	INTERRUPTS_ENABLE();
-
-
+	/* enable interrupts */
+	m_arch_intr_enable();
 }
 
 __attribute__((naked)) extern void SVC_Handler(void)
