@@ -9,6 +9,7 @@
 #define m_svcall_mbox_send(mbox, msg)		svcall(SVC_MBOX_SEND, mbox, msg, (void*)0)
 #define m_svcall_mbox_try_send(mbox, msg)	svcall(SVC_MBOX_TSEND, mbox, msg, (void*)1)
 #define m_svcall_mbox_recv(mbox, msg)		svcall(SVC_MBOX_RECV, mbox, msg, (void*)0)
+#define m_svcall_mbox_try_recv(mbox, msg)	svcall(SVC_MBOX_RECV, mbox, msg, (void*)0)
 
 void mailbox_create(mailbox_t *mbox, uint8_t *buffer, uint32_t size)
 {
@@ -33,6 +34,11 @@ int mailbox_try_send(mailbox_t *mbox, void *src)
 int mailbox_recv(mailbox_t *mbox, void *dest)
 {
 	return m_svcall_mbox_recv(mbox, dest);
+}
+
+int mailbox_try_recv(mailbox_t *mbox, void *dest)
+{
+	return m_svcall_mbox_try_recv(mbox, dest);
 }
 
 int _svc_mbox_send(struct _mbox *mbox, void *src, bool try)

@@ -72,6 +72,9 @@ extern void C_SVC_Handler(uint32_t *svc_args)
 			break;
 		case SVC_MBOX_RECV:
 			ret = _svc_mbox_recv( (struct _mbox *)svc_args[1], (void*)svc_args[2], svc_args[3]);
+			break;
+		case SVC_MBOX_TRECV:
+			ret = _svc_mbox_recv( (struct _mbox *)svc_args[1], (void*)svc_args[2], svc_args[3]);
 		default:
 			break;
 	}
