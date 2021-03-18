@@ -47,34 +47,34 @@ extern void C_SVC_Handler(uint32_t *svc_args)
 			ret = _svc_task_sleep( svc_args[1] );
 			break;
 		case SVC_SEM_TAKE:
-			ret = _svc_semphr_take( (struct _semphr *)svc_args[1], svc_args[2]);
+			ret = _svc_semphr_take( (struct _semphr *)svc_args[1], false);
 			break;
 		case SVC_SEM_TTAKE:
-			ret = _svc_semphr_take( (struct _semphr *)svc_args[1], svc_args[2]);
+			ret = _svc_semphr_take( (struct _semphr *)svc_args[1], true);
 			break;
 		case SVC_SEM_GIVE:
 			ret = _svc_semphr_give( (struct _semphr *)svc_args[1] );
 			break;
 		case SVC_MTX_LOCK:
-			ret = _svc_mutex_lock( (struct _semphr *)svc_args[1], svc_args[2]);
+			ret = _svc_mutex_lock( (struct _semphr *)svc_args[1], false);
 			break;
 		case SVC_MTX_TLOCK:
-			ret = _svc_mutex_lock( (struct _semphr *)svc_args[1], svc_args[2]);
+			ret = _svc_mutex_lock( (struct _semphr *)svc_args[1], true);
 			break;
 		case SVC_MTX_UNLOCK:
 			ret = _svc_mutex_unlock( (struct _semphr *)svc_args[1] );
 			break;
 		case SVC_MBOX_SEND:
-			ret = _svc_mbox_send( (struct _mbox *)svc_args[1], (void*)svc_args[2], svc_args[3]);
+			ret = _svc_mbox_send( (struct _mbox *)svc_args[1], (void*)svc_args[2], false);
 			break;
 		case SVC_MBOX_TSEND:
-			ret = _svc_mbox_send( (struct _mbox *)svc_args[1], (void*)svc_args[2], svc_args[3]);
+			ret = _svc_mbox_send( (struct _mbox *)svc_args[1], (void*)svc_args[2], true);
 			break;
 		case SVC_MBOX_RECV:
-			ret = _svc_mbox_recv( (struct _mbox *)svc_args[1], (void*)svc_args[2], svc_args[3]);
+			ret = _svc_mbox_recv( (struct _mbox *)svc_args[1], (void*)svc_args[2], false);
 			break;
 		case SVC_MBOX_TRECV:
-			ret = _svc_mbox_recv( (struct _mbox *)svc_args[1], (void*)svc_args[2], svc_args[3]);
+			ret = _svc_mbox_recv( (struct _mbox *)svc_args[1], (void*)svc_args[2], true);
 		default:
 			break;
 	}

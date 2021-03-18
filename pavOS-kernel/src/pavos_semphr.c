@@ -10,11 +10,11 @@
 #include"pavos_task.h"
 #include <stdbool.h>
 
-#define m_svcall_semphr_take(sem)		svcall(SVC_SEM_TAKE, (void*)sem, (void*)0, NULL)
-#define m_svcall_semphr_try_take(sem)		svcall(SVC_SEM_TTAKE, sem, (void*)1, NULL)
+#define m_svcall_semphr_take(sem)		svcall(SVC_SEM_TAKE, sem, NULL, NULL)
+#define m_svcall_semphr_try_take(sem)		svcall(SVC_SEM_TTAKE, sem, NULL, NULL)
 #define m_svcall_semphr_give(sem)		svcall(SVC_SEM_GIVE, sem, NULL, NULL)
-#define m_svcall_mutex_lock(mtx)		svcall(SVC_MTX_LOCK, mtx, (void*)0, NULL)
-#define m_svcall_mutex_try_lock(mtx)		svcall(SVC_MTX_TLOCK, mtx, (void*)1, NULL)
+#define m_svcall_mutex_lock(mtx)		svcall(SVC_MTX_LOCK, mtx, NULL, NULL)
+#define m_svcall_mutex_try_lock(mtx)		svcall(SVC_MTX_TLOCK, mtx, NULL, NULL)
 #define m_svcall_mutex_unlock(mtx)		svcall(SVC_MTX_UNLOCK, mtx, NULL, NULL)
 
 void semaphore_create_cnt(semphr_t *sem, uint32_t init, uint32_t limit)
