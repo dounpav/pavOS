@@ -78,7 +78,7 @@ int _svc_mbox_send(struct _mbox *mbox, void *src, bool try)
 		{
 			struct _tcb *tsk = _schd_unblock_task( &(mbox->recv_queue) );
 			memcpy(tsk->msg_ptr, mbox->msg_storg, mbox->msg_sz);
-			mbox->dirty = 1;
+			mbox->dirty = 0;
 			ret = E_SUCC;
 		}
 		/*
@@ -86,12 +86,12 @@ int _svc_mbox_send(struct _mbox *mbox, void *src, bool try)
 		 * until the message is received or return immediately
 		 * */
 		else{
+			mbox->dirty = 1;
 			if(try){
 				ret = E_FAIL;
 			}
 			else{
 				_schd_block_task( &(mbox->send_queue) );
-				mbox->dirty = 1;
 				ret = E_SUCC;
 			}
 		}
