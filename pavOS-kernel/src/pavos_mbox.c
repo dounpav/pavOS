@@ -1,5 +1,5 @@
 
-/* file: pavos_mbox.h*/
+/* file: pavos_mbox.c*/
 
 #include "pavos_svcall.h"
 #include "pavos_task.h"
@@ -78,7 +78,6 @@ int _svc_mbox_send(struct _mbox *mbox, void *src, bool try)
 		{
 			struct _tcb *tsk = _schd_unblock_task( &(mbox->recv_queue) );
 			memcpy(tsk->msg_ptr, mbox->msg_storg, mbox->msg_sz);
-			mbox->dirty = 0;
 			ret = E_SUCC;
 		}
 		/*
@@ -128,22 +127,18 @@ int _svc_mbox_recv(struct _mbox *mbox, void *dest, bool try)
 	 * */
 	else{
 		memcpy(dest, mbox->msg_storg, mbox->msg_sz);
-
+		/*
+		 * if send queue contains a task, unblock it and copy its
+		 * message to the mailbox. Otherwise set mailbox to clean.
+		 * */
 		if( !m_list_is_empty(mbox->send_queue) )
 		{
 			struct _tcb *tsk = _schd_unblock_task( &(mbox->send_queue) );
-			tsk->msg_ptr = NULL;
-			mbox->dirty = 0;
+			memcpy(mbox->msg_storg, tsk->msg_ptr, mbox->msg_sz);
 		}
 		else{
-			if(try){
-				ret = E_FAIL;
-			}
-			else{
-				_schd_block_task( &(mbox->recv_queue) );
-				mbox->dirty = 0;
-				ret = E_SUCC;
-			}
+			mbox->dirty = 0;
+			ret = E_SUCC;
 		}
 	}
 
