@@ -5,8 +5,8 @@
  *      Author: pavel
  */
 
-#ifndef PAVOS_SYSCALL_H_
-#define PAVOS_SYSCALL_H_
+#ifndef PAVOS_SVCALL_H_
+#define PAVOS_SVCALL_H_
 
 #include<stdint.h>
 
@@ -31,4 +31,4 @@
 __attribute__((naked)) uint32_t svcall(uint8_t n, void *p1, void *p2, void *p3);
 
 
-#endif /* PAVOS_SYSCALL_H_ */
+#endif /* PAVOS_SVCALL_H_ */

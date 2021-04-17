@@ -5,12 +5,14 @@
  *      Author: pavel
  */
 
-#ifndef PAVOS_TYPES_H_
-#define PAVOS_TYPES_H_
+#ifndef PAVOS_ARCH_H_
+#define PAVOS_ARCH_H_
+
 
 #include"cmsis.h"
 #include"core_cm3.h"
 #include"core_cmFunc.h"
+
 #include<stddef.h>
 #include<stdbool.h>
 #include<stdint.h>
@@ -19,4 +21,4 @@
 #define m_arch_intr_disable()		__disable_irq()
 #define m_arch_intr_enable()		__enable_irq()
 
-#endif /* PAVOS_TYPES_H_ */
+#endif /* PAVOS_ARCH_H_ */
