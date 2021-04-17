@@ -1,3 +1,8 @@
+
+/*
+ * pavos_mbox.h
+ * */
+
 #ifndef PAVOS_MBOX_H_
 #define PAVOS_MBOX_H_
 
@@ -23,8 +28,4 @@ int mailbox_recv(mailbox_t *mbox, void *dest);
 int _svc_mbox_send(struct _mbox *mbox, void *src, bool try);
 int _svc_mbox_recv(struct _mbox *mbox, void *dest, bool try);
 
-
-
-
-
-#endif
+#endif /* PAVOS_MBOX_H_*/

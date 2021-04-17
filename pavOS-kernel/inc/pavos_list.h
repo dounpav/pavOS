@@ -1,12 +1,13 @@
 
+/*
+ * pavos_list.h
+ * */
 
-/* file: list.h */
+#ifndef PAVOS_LIST_H_
+#define PAVOS_LIST_H_
 
 #include<stddef.h>
 #include<stdint.h>
-
-#ifndef LIST_H
-#define LIST_H
 
 
 #define m_item_init(item, type){		\
@@ -27,9 +28,8 @@
 	.tail = NULL,				\
 };
 
-#define m_item_parent(type, item) (type)item->parent;
-
-#define m_list_is_empty(list) (list.size == 0)
+#define m_item_parent(type, item) 	(type)item->parent;
+#define m_list_is_empty(list) 		(list.size == 0)
 
 /*
  * List item that holds pointer to an actual data
@@ -82,5 +82,5 @@ struct _item *_list_remove(struct _list *list, struct _item *item);
 
 
 
-#endif /*LIST_H*/
+#endif /*PAVOS_LIST_H*/
 
